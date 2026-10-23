@@ -6,8 +6,9 @@ In this order. Stop by midnight; a rested builder beats one more feature.
 
 1. **Chetan:** send him BRIEF-chetan.md. Get his GST/UPI repo and answers. He starts the
    list of 40.
-2. **Voice check, 20 min.** ElevenLabs API key. Scribe on 3 Hindi and 3 Malayalam
-   recordings with rupee amounts. If Malayalam is bad, cut it now.
+2. **Voice check, 20 min.** ElevenLabs API key. Scribe on 3 recordings each in Hindi,
+   Kannada (Chetan records these) and Malayalam, with rupee amounts. Cut any language
+   that fails now.
 3. **Extract check, 20 min.** Paste those transcripts into Claude with the invoice schema
    from SPEC.md. Do the amounts and GST rates come out right?
 4. **Accounts, 30 min.** Everything in NEEDS.md: Anthropic key, hosting, database, GitHub

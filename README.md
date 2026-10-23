@@ -17,7 +17,8 @@ Get:
 Double-entry books sit underneath. They show as two views only: **who owes me** and
 **GST this month**. The invoice gets people in; the books are the company.
 
-Works in English, Hindi and Malayalam.
+Works in English, Hindi, Kannada and Malayalam. Kannada matters most in the room: the
+event is in Bengaluru, and Chetan can demo it.
 
 ## Why this one
 

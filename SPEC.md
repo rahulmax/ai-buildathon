@@ -6,7 +6,7 @@
    cookie. A login wall at 16:00 costs us users. Add "save with email" later if there is time.
 2. **Your details, once.** Name or business name, state, GSTIN (optional), UPI ID.
    These go on every invoice.
-3. **Talk.** Hold the mic button and say the invoice in English, Hindi or Malayalam.
+3. **Talk.** Hold the mic button and say the invoice in English, Hindi, Kannada or Malayalam.
 4. **Check.** The invoice appears as a filled form: customer, lines, GST rate, due date.
    Every field is editable. Amounts are the field most likely to be misheard, so show them
    large. Nothing is saved until the user confirms.
@@ -90,7 +90,7 @@ Cut from the top when behind:
 
 1. Purchase bills by photo (was never in v1)
 2. Pine Labs (UPI stays)
-3. Malayalam (keep English and Hindi)
+3. Malayalam, then Hindi (keep English and Kannada: Kannada is the local demo)
 4. GST this month view (the ledger still records it)
 5. Editing an invoice after it's saved
 

@@ -42,7 +42,7 @@ lined up, since half won't show.
 | --- | --- | --- |
 | GTM plan | Draft by 16:00 | 1 page. Who it's for first (freelancers in India), how they hear about it, what it costs, how it makes money |
 | Pitch deck | Draft by 18:00 | Rahul does the visual design. You write the content: problem, demo, traction, books as the company, ask |
-| Demo video | Record 18:30, upload by 19:30 | Under 90 seconds. Screen recording with voice. Show a Hindi invoice |
+| Demo video | Record 18:30, upload by 19:30 | Under 90 seconds. Screen recording with voice. Show a Kannada invoice, in your voice |
 | Organisers and sponsors | All day | Submission form, the Pine Labs mentor for test keys, the ElevenLabs mentor |
 
 ## 4. Brand kit

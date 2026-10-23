@@ -17,10 +17,12 @@ The timeline is in [PLAN.md](PLAN.md); the product is in [SPEC.md](SPEC.md).
 - [ ] **Chetan:** set up the user sheet: name, said yes, link sent, used it, amount, quote.
 
 ### Checks before building
-- [ ] **Rahul:** make an ElevenLabs API key and run Scribe on 3 Hindi and 3 Malayalam
-  recordings, each with a rupee amount and a company name.
+- [ ] **Chetan:** record 3 invoices spoken in Kannada on your phone, each with a rupee
+  amount and a company name. Send them to Rahul.
+- [ ] **Rahul:** make an ElevenLabs API key and run Scribe on 3 recordings each in Hindi,
+  Kannada and Malayalam, each with a rupee amount and a company name.
   Done when: amounts and names come through right in at least 2 of 3 per language.
-  If Malayalam fails, cut it (SPEC.md cut list).
+  Cut any language that fails (SPEC.md cut list).
 - [ ] **Rahul:** paste those transcripts into Claude with the invoice fields from SPEC.md.
   Done when: customer, amount, GST rate and due date come out right, and a missing field
   comes back empty, not guessed.
@@ -85,7 +87,7 @@ The timeline is in [PLAN.md](PLAN.md); the product is in [SPEC.md](SPEC.md).
 - [ ] **Rahul:** fix what users break.
 - [ ] **Rahul:** brand kit: name, logo, colours, type, on one page.
 - [ ] **Rahul:** design the deck from Chetan's content. Add the `/stats` numbers and quotes.
-- [ ] **Chetan:** 18:30, record the demo video, under 90 seconds, with a Hindi invoice.
+- [ ] **Chetan:** 18:30, record the demo video, under 90 seconds, with a Kannada invoice.
   Upload by 19:30.
 - [ ] **Chetan:** fill in the submission form with all six deliverables.
 - [ ] **19:30: 20 users.** Screenshot `/stats`.
