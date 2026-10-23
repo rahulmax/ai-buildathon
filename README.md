@@ -52,6 +52,7 @@ The traction line we want on stage: **"₹X invoiced through this today"**, not 
 
 ## Files
 
+- [TODO.md](TODO.md): the to-do list, with owner and "done when" on each task.
 - [PLAN.md](PLAN.md): tonight's checklist and the day hour by hour.
 - [SPEC.md](SPEC.md): the product, the data contract, the stack.
 - [BRIEF-chetan.md](BRIEF-chetan.md): Chetan's jobs and what we need from his GST and UPI work.
