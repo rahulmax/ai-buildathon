@@ -33,6 +33,8 @@ and have no time or training for accounting software.
 - Bills you haven't paid yet, and who you owe
 - Profit in plain words: "You made ₹1,20,000 this month. Software was your biggest cost."
 - Ask your books out loud: "How much has Ravi Traders paid me this year?"
+- A warning before you cross the GST registration limit: "You've billed ₹17 lakh of
+  ₹20 lakh this year."
 
 ## Month 3, January 2027: GST filing ready
 
@@ -40,6 +42,8 @@ and have no time or training for accounting software.
 - GSTR-3B summary from invoices and bills
 - Input credit checked against what your sellers actually filed (GSTR-2B)
 - Hand-off to your CA: an export, or invite them in
+- Advance tax: a reminder before each due date, with the amount worked out from your books.
+  Most freelancers on presumptive tax (44ADA) pay it all by 15 March, so that date leads
 
 ## Months 4 to 6, February to April 2027: the year end
 
@@ -49,6 +53,8 @@ books, and the deadline we build toward.
 - Track the TDS your clients deducted, and match it to Form 26AS
 - A year-end summary ready for your income tax return, including presumptive tax (44ADA)
   for professionals
+- Proof of income in one tap: a statement of income and profit for a bank, a landlord or
+  a visa application, built from books that are already right
 - Bank data through the Account Aggregator network, via a licensed partner
 - Working capital against unpaid invoices, with a lending partner
 
@@ -73,4 +79,4 @@ One slide in the deck. Four columns:
 
 | Today | Month 1 | Months 2 to 3 | Months 4 to 6 |
 | --- | --- | --- | --- |
-| Say it, snap it, get paid | Keep using it | Books fill themselves, GST filing ready | Year end, tax, credit |
+| Say it, snap it, get paid | Keep using it | Books fill themselves, GST and advance tax ready | Year end, proof of income, credit |

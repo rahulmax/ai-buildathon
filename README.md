@@ -3,6 +3,23 @@
 Airtribe's 12-hour build sprint, Saturday 2026-10-24, 09:00 to 21:00 IST, Bengaluru.
 Powered by Pine Labs. Registered as one team: Rahul and Chetan.
 
+## The problem
+
+Freelancers and small businesses hate paperwork, and it bites them all year, not only at
+GST time.
+
+- **Every week:** making invoices, chasing late payments, digging up an old invoice a
+  client asks for.
+- **Every month:** no idea if they made money, with personal and business spending mixed
+  in one account. No idea what GST they owe.
+- **Through the year:** advance tax nobody works out, and TDS that clients deduct (usually
+  10% of professional fees) and nobody tracks, so it never gets claimed back.
+- **At year end:** a bag of receipts dumped on the CA, and an income tax return built from
+  memory. Some find out late that they crossed the GST registration limit (₹20 lakh a year
+  for most services).
+- **When life asks for proof:** a bank, landlord or visa office wants proof of income, and
+  there's nothing ready.
+
 ## What we're building
 
 A voice invoice tool for freelancers and small sellers, in the **AI for Finance** track.
