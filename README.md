@@ -1,7 +1,11 @@
 # AI Builder's Day '26
 
 Airtribe's 12-hour build sprint, Saturday 2026-10-24, 09:00 to 21:00 IST, Bengaluru.
-Powered by Pine Labs. Registered as one team: Rahul and Chetan.
+Powered by Pine Labs. Registered as one team: Rahul, Chetan and Shaheen. Shaheen arrives
+later in the day, so his work is the afternoon's.
+
+Check-in opens 08:00, kickoff 09:00. Polaris School of Technology, DivyaSree Technopark,
+Brookefield. Everyone checks in with their own Builder ID.
 
 ## The problem
 
@@ -65,8 +69,8 @@ The traction line we want on stage: **"₹X invoiced through this today"**, not 
 | Live product   | Rahul   |
 | Brand kit      | Rahul directs, Chetan helps |
 | Landing page   | Rahul   |
-| Pitch deck     | Chetan drafts, Rahul designs |
-| Demo video     | Chetan  |
+| Pitch deck     | Shaheen drafts, Rahul designs |
+| Demo video     | Shaheen records, Chetan voices the Kannada invoice |
 | GTM plan       | Chetan  |
 | 20 users       | Chetan  |
 

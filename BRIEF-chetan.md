@@ -1,7 +1,8 @@
 # Chetan's brief
 
-Rahul builds the product from 11:00 to 16:00 and is heads-down. You own everything that
-gets us to 20 users and to the stage. Read README.md first for what we're building.
+Rahul builds the product from 11:00 to 16:00 and is heads-down. You own getting us to 20
+users. Shaheen joins later in the day and takes the deck content and the demo video. Read
+README.md first for what we're building.
 
 ## 1. Your GST and UPI work: tonight
 
@@ -44,8 +45,7 @@ lined up, since half won't show.
 | Deliverable | When | Notes |
 | --- | --- | --- |
 | GTM plan | Draft by 16:00 | 1 page. Who it's for first (freelancers in India), how they hear about it, what it costs, how it makes money |
-| Pitch deck | Draft by 18:00 | Rahul does the visual design. You write the content: problem, demo, traction, the roadmap slide from ROADMAP.md, ask |
-| Demo video | Record 18:30, upload by 19:30 | Under 90 seconds. Screen recording with voice. Show a Kannada invoice, in your voice |
+| Demo video | 18:30 | Shaheen records it. You voice the Kannada invoice |
 | Organisers and sponsors | All day | Submission form, the Pine Labs mentor for test keys, the ElevenLabs mentor |
 
 ## 4. Brand kit

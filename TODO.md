@@ -15,6 +15,8 @@ The timeline is in [PLAN.md](PLAN.md); the product is in [SPEC.md](SPEC.md).
 - [ ] **Chetan:** list 40 people who'd send an invoice, and message each one.
   Done when: the sheet has 40 names, and at least 25 have said yes.
 - [ ] **Chetan:** set up the user sheet: name, said yes, link sent, used it, amount, quote.
+- [ ] **Rahul:** tell Shaheen his part: deck content, the demo video, and users after 16:00.
+  Done when: he knows what to pick up when he arrives, and we know roughly when that is.
 
 ### Checks before building
 - [ ] **Chetan:** record 3 invoices spoken in Kannada on your phone, each with a rupee
@@ -38,8 +40,10 @@ The timeline is in [PLAN.md](PLAN.md); the product is in [SPEC.md](SPEC.md).
 - [ ] **Rahul:** GitHub repo for this folder, private, Chetan added. Push.
 - [ ] **Rahul:** try the Pine Labs test-key signup.
   Done when: we have keys, or we know they need a mentor. Either is fine.
-- [ ] **Rahul:** skeleton app (Next.js, TypeScript, Tailwind, shadcn) deployed to the real URL.
-  Done when: the URL loads on a phone and a page reads one row from the database.
+- [ ] **Rahul:** no app code tonight. Nothing says pre-built code is allowed, so the build
+  starts at the venue. Have the hosting project, database and keys ready instead.
+  Done when: tomorrow's first commit can deploy with no account setup. If the organisers
+  say yes to pre-built code tonight, scaffold then.
 
 ### Design
 - [ ] **Rahul:** design the public invoice screen (SPEC.md screen 5).
@@ -52,7 +56,9 @@ The timeline is in [PLAN.md](PLAN.md); the product is in [SPEC.md](SPEC.md).
 
 ## Saturday 2026-10-24
 
-### 09:00 to 11:00: set up
+### 08:00 to 11:00: set up
+- [ ] **Rahul and Chetan:** check in from 08:00, each with your own Builder ID. Shaheen
+  checks in when he arrives.
 - [ ] **Rahul:** ask the organisers the four questions in NEEDS.md. Write the answers
   in NEEDS.md.
 - [ ] **Chetan:** find the Pine Labs mentor; get test keys if we don't have them.
@@ -82,8 +88,8 @@ The timeline is in [PLAN.md](PLAN.md); the product is in [SPEC.md](SPEC.md).
 - [ ] **Rahul:** GST this month: collected minus input credit equals GST to pay.
 - [ ] **Rahul:** Pine Labs payment link (cut if no keys).
 - [ ] **Rahul:** landing page.
-- [ ] **Chetan:** deck content: problem, demo, traction, the roadmap slide from
-  ROADMAP.md, the ask.
+- [ ] **Shaheen:** deck content, from when he arrives: problem, demo, traction, the
+  roadmap slide from ROADMAP.md, the ask. Draft by 18:00.
 - [ ] **Chetan:** test the live link on 3 phones at 15:00. Report bugs to Rahul.
 - [ ] **Checkpoint 15:30:** the public link works on a phone. If not, nothing else gets
   built until it does.
@@ -92,11 +98,12 @@ The timeline is in [PLAN.md](PLAN.md); the product is in [SPEC.md](SPEC.md).
 - [ ] **Chetan:** 16:00, send the link to every yes, one personal message each.
 - [ ] **Chetan:** chase, work the room, collect "would you use this" quotes.
   Count from `/stats` to Rahul every 30 minutes.
+- [ ] **Shaheen:** help chase users from 16:00, alongside the deck.
 - [ ] **Rahul:** fix what users break.
 - [ ] **Rahul:** brand kit: name, logo, colours, type, on one page.
 - [ ] **Rahul:** design the deck from Chetan's content. Add the `/stats` numbers and quotes.
-- [ ] **Chetan:** 18:30, record the demo video, under 90 seconds, with a Kannada invoice.
-  Upload by 19:30.
+- [ ] **Shaheen:** 18:30, record the demo video, under 90 seconds. **Chetan** voices the
+  Kannada invoice in it. Upload by 19:30.
 - [ ] **Chetan:** fill in the submission form with all six deliverables.
 - [ ] **19:30: 20 users.** Screenshot `/stats`.
 
