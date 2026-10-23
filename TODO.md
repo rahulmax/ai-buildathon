@@ -26,6 +26,10 @@ The timeline is in [PLAN.md](PLAN.md); the product is in [SPEC.md](SPEC.md).
 - [ ] **Rahul:** paste those transcripts into Claude with the invoice fields from SPEC.md.
   Done when: customer, amount, GST rate and due date come out right, and a missing field
   comes back empty, not guessed.
+- [ ] **Rahul:** photograph 3 real bills (a restaurant bill, a GST tax invoice, a
+  handwritten shop bill) and run them through Claude with the bill fields from SPEC.md.
+  Done when: seller, total and GST come out right on the two printed ones. If the
+  handwritten one fails, the confirm form handles it; that's fine.
 
 ### Accounts and setup
 - [ ] **Rahul:** Anthropic API key with credit loaded.
@@ -71,11 +75,15 @@ The timeline is in [PLAN.md](PLAN.md); the product is in [SPEC.md](SPEC.md).
 - [ ] **Rahul:** reminder message with "Send on WhatsApp" and "Copy".
 - [ ] **Rahul:** Who owes me, read from the `receivable` balance.
 - [ ] **Rahul:** Mark as paid, posting the payment entry.
-- [ ] **Rahul:** `/stats`: users today, invoices today, ₹ invoiced today.
-- [ ] **Rahul:** GST this month (first to cut).
+- [ ] **Rahul:** `/stats`: users today, invoices today, bills today, ₹ invoiced today.
+- [ ] **Rahul:** Snap a bill, 15:00 to 16:00, **only if the 13:00 checkpoint passed**.
+  Done when: a photo of a lunch bill saves with a balanced expense entry, and a bill with
+  no GSTIN puts its whole total in expenses.
+- [ ] **Rahul:** GST this month: collected minus input credit equals GST to pay.
 - [ ] **Rahul:** Pine Labs payment link (cut if no keys).
 - [ ] **Rahul:** landing page.
-- [ ] **Chetan:** deck content: problem, demo, traction, the books as the company, the ask.
+- [ ] **Chetan:** deck content: problem, demo, traction, the roadmap slide from
+  ROADMAP.md, the ask.
 - [ ] **Chetan:** test the live link on 3 phones at 15:00. Report bugs to Rahul.
 - [ ] **Checkpoint 15:30:** the public link works on a phone. If not, nothing else gets
   built until it does.
@@ -93,4 +101,5 @@ The timeline is in [PLAN.md](PLAN.md); the product is in [SPEC.md](SPEC.md).
 - [ ] **19:30: 20 users.** Screenshot `/stats`.
 
 ### 19:30 to 21:00: demo
-- [ ] **Rahul:** pitch. Open with the live demo, close on "₹X invoiced today".
+- [ ] **Rahul:** pitch. Open with the live demo: a Kannada invoice, then a bill snapped
+  on stage. Show the roadmap. Close on "₹X invoiced today".

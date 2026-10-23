@@ -1,5 +1,13 @@
 # Spec
 
+Two ways in, one set of books.
+
+- **Money in:** say an invoice, get a GST invoice, a UPI QR and a reminder.
+- **Money out:** snap a bill, and it's logged as an expense with the GST you paid.
+
+The books show what both add up to. Anything past that is on [ROADMAP.md](ROADMAP.md),
+not in today's build.
+
 ## The flow
 
 1. **Open the link.** No sign-up. The first visit makes a workspace and keeps it in a
@@ -12,9 +20,14 @@
    large. Nothing is saved until the user confirms.
 5. **Done.** The invoice gets its own public link with a UPI QR and a Pay button. Below it,
    a reminder message with "Send on WhatsApp" (a `wa.me` link, no API needed) and "Copy".
-6. **Books.** Two views: **Who owes me** (open invoices, oldest first, total at the top)
-   and **GST this month** (tax collected, split CGST, SGST and IGST). "Mark as paid" on
-   an invoice posts the payment.
+6. **Snap a bill.** The camera button takes a photo of a bill or receipt. It appears as a
+   filled form: seller, seller's GSTIN, date, amount, GST, category. Same rule: editable,
+   nothing saved until confirmed.
+7. **Books.** Two views:
+   - **Who owes me:** open invoices, oldest first, total at the top. "Mark as paid" on an
+     invoice posts the payment.
+   - **GST this month:** GST collected on invoices, minus GST paid on bills, equals GST to
+     pay. Split CGST, SGST and IGST. Without bills this view is only half a number.
 
 ## Voice to invoice
 
@@ -28,6 +41,18 @@ browser mic (MediaRecorder)
 
 The extract step returns fields, never prose. If a field is missing (no due date, no GST
 rate), leave it empty and let the form ask. Do not guess a GST rate.
+
+## Photo to bill
+
+```
+camera (<input type="file" accept="image/*" capture="environment">)
+  → POST /api/read-bill    Claude reads the image, structured output → bill JSON
+  → confirm form
+  → POST /api/bills        save bill + post ledger entry, in one transaction
+```
+
+Same rules as voice: fields only, missing stays empty. The photo is not stored in v1.
+We keep the fields, which also means we hold no images of people's receipts.
 
 ## Data contract
 
@@ -44,20 +69,34 @@ subtotal, cgst, sgst, igst, total, status (`open`, `paid`), public_slug, languag
 
 **payment**: id, invoice_id, amount, method (`upi`, `pine_labs`, `manual`), paid_at
 
+**bill**: id, workspace_id, seller_name, seller_gstin?, bill_date, category, subtotal, cgst,
+sgst, igst, total, created_at
+
 **ledger_entry**: id, workspace_id, date, memo, source_type, source_id
 
 **ledger_line**: id, entry_id, account, debit, credit
 
 Accounts are a fixed list, no chart-of-accounts screen:
-`receivable`, `revenue`, `cgst_payable`, `sgst_payable`, `igst_payable`, `bank`.
+`receivable`, `revenue`, `bank`, `expenses`,
+`cgst_payable`, `sgst_payable`, `igst_payable`,
+`cgst_input`, `sgst_input`, `igst_input`.
+
+Bill categories are a fixed list too: travel, food, software, equipment, rent, other.
 
 ### Rules
 
 - Every ledger entry balances: total debits equal total credits. Check it in code before
   insert, and as a Postgres constraint trigger if there is time.
 - **An invoice posts:** debit `receivable` total; credit `revenue` subtotal; credit the
-  GST accounts their amounts.
+  `*_payable` GST accounts their amounts.
 - **A payment posts:** debit `bank`; credit `receivable`.
+- **A bill posts**, treated as already paid: debit `expenses` subtotal; debit the
+  `*_input` GST accounts their amounts; credit `bank` total.
+- **No seller GSTIN, no input credit.** GST on a bill without the seller's GSTIN can't be
+  claimed, so the whole total goes to `expenses` and the input accounts get nothing. Say so
+  on the confirm form: "No GSTIN on this bill, so its GST can't be claimed."
+- **GST to pay** = `*_payable` balances minus `*_input` balances for the month. If it's
+  negative, show it as credit carried forward, not as a refund.
 - **GST split:** supplier state equals place of supply → CGST and SGST, half each.
   Different states → IGST. Customer state unknown → assume same state and show it on the
   confirm form. Chetan's code may already do this; use his if it does.
@@ -70,16 +109,18 @@ Accounts are a fixed list, no chart-of-accounts screen:
 
 1. Landing page (separate deliverable, can share the app's styles)
 2. Your details (first visit only)
-3. Home: mic button, recent invoices, the two book totals
-4. Confirm form
+3. Home: mic button, camera button, recent activity, the two book totals
+4. Invoice confirm form
 5. Invoice, public (what the customer sees and pays from)
-6. Who owes me
-7. GST this month
-8. `/stats`: users today, invoices today, ₹ invoiced today. This is the traction slide.
+6. Bill confirm form
+7. Who owes me
+8. GST this month
+9. `/stats`: users today, invoices today, bills today, ₹ invoiced today. This is the
+   traction slide.
 
 ## Stack
 
-Next.js, TypeScript, Tailwind, shadcn. Postgres. zod for the extract output and every
+Next.js, TypeScript, Tailwind, shadcn. Postgres. zod for both extract outputs and every
 form. Server components by default.
 
 Invoice design is where we beat Chat2Cash. Design it before the build, not at 15:00.
@@ -88,7 +129,8 @@ Invoice design is where we beat Chat2Cash. Design it before the build, not at 15
 
 Cut from the top when behind:
 
-1. Purchase bills by photo (was never in v1)
+1. Snap a bill. Built 15:00 to 16:00 only if the 13:00 checkpoint passed. If cut, the
+   pitch falls back to invoices plus books, and bills move to the roadmap's first month.
 2. Pine Labs (UPI stays)
 3. Malayalam, then Hindi (keep English and Kannada: Kannada is the local demo)
 4. GST this month view (the ledger still records it)

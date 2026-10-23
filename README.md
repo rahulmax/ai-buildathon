@@ -14,6 +14,8 @@ Get:
 2. A way to pay it (UPI, and Pine Labs if their test keys work).
 3. A reminder message ready to send on WhatsApp.
 
+Snap a photo of a bill and it's logged as an expense, with the GST you paid.
+
 Double-entry books sit underneath. They show as two views only: **who owes me** and
 **GST this month**. The invoice gets people in; the books are the company.
 
@@ -56,5 +58,6 @@ The traction line we want on stage: **"₹X invoiced through this today"**, not 
 - [TODO.md](TODO.md): the to-do list, with owner and "done when" on each task.
 - [PLAN.md](PLAN.md): tonight's checklist and the day hour by hour.
 - [SPEC.md](SPEC.md): the product, the data contract, the stack.
+- [ROADMAP.md](ROADMAP.md): the next six months, for the judges. The books grow from here.
 - [BRIEF-chetan.md](BRIEF-chetan.md): Chetan's jobs and what we need from his GST and UPI work.
 - [NEEDS.md](NEEDS.md): accounts, keys and kit to have before 09:00.

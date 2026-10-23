@@ -26,7 +26,10 @@ lined up, since half won't show.
 - Make a list of 40 people who'd plausibly send an invoice: freelancers, designers,
   developers, consultants, small shop owners. Name, phone, how you know them.
 - Message each one: "I'm at a hackathon on Saturday. At 4pm I'll send you a link. It
-  takes 1 minute: you say an invoice out loud and it makes one. Can you try it?"
+  takes 1 minute: you say an invoice out loud and it makes one, or snap a bill and it
+  logs it. Can you try it?"
+- Snapping a bill is the easiest way in: everyone at the event has a lunch bill. Use it
+  when someone has no invoice to send.
 - Keep a sheet: name, said yes, link sent, used it, invoice amount.
 
 **On the day**
@@ -41,7 +44,7 @@ lined up, since half won't show.
 | Deliverable | When | Notes |
 | --- | --- | --- |
 | GTM plan | Draft by 16:00 | 1 page. Who it's for first (freelancers in India), how they hear about it, what it costs, how it makes money |
-| Pitch deck | Draft by 18:00 | Rahul does the visual design. You write the content: problem, demo, traction, books as the company, ask |
+| Pitch deck | Draft by 18:00 | Rahul does the visual design. You write the content: problem, demo, traction, the roadmap slide from ROADMAP.md, ask |
 | Demo video | Record 18:30, upload by 19:30 | Under 90 seconds. Screen recording with voice. Show a Kannada invoice, in your voice |
 | Organisers and sponsors | All day | Submission form, the Pine Labs mentor for test keys, the ElevenLabs mentor |
 
