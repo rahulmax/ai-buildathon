@@ -1,0 +1,408 @@
+{
+  "meta": {
+    "version": "0.1.0",
+    "created": "2026-10-24",
+    "last_updated": "2026-10-24",
+    "project_name": "Say it, get paid (AI Builder's Day '26)",
+    "bounded_context": "invoicing",
+    "scope_status": "core",
+    "summary": "Money in: say an invoice, confirm it, share a public GST invoice with UPI, remind, record payment.",
+    "references": ["intent-shared.json", "intent-books.json", "entitlements.json"]
+  },
+
+  "entities": [
+    {
+      "name": "Invoice",
+      "user_value": "A GST invoice I'd be proud to send, at its own link, that my client can pay from",
+      "description": "A tax invoice from the workspace to a customer. Saving it posts receivable, revenue and GST payable in the same transaction.",
+      "phase": "today",
+      "key_fields": [
+        { "name": "workspace_id", "type": "id", "required": true, "label": "Workspace" },
+        { "name": "customer_id", "type": "id", "required": true, "label": "Customer" },
+        { "name": "number", "type": "string", "required": true, "label": "INV-<FY>-<0001>, sequential per workspace per financial year, unique per workspace, max 16 chars" },
+        { "name": "issue_date", "type": "date", "required": true, "label": "Issue date; also the ledger entry date" },
+        { "name": "due_date", "type": "date", "required": false, "label": "Due date; empty unless spoken or set (never guessed)" },
+        { "name": "place_of_supply", "type": "enum:STATES", "required": true, "label": "Customer state; decides CGST+SGST vs IGST" },
+        { "name": "subtotal", "type": "paise", "required": true, "label": "Sum of line amounts" },
+        { "name": "cgst", "type": "paise", "required": true, "label": "Central GST" },
+        { "name": "sgst", "type": "paise", "required": true, "label": "State GST" },
+        { "name": "igst", "type": "paise", "required": true, "label": "Integrated GST" },
+        { "name": "total", "type": "paise", "required": true, "label": "Subtotal plus GST" },
+        { "name": "status", "type": "enum:open|paid", "required": true, "label": "Cached status; Who owes me reads the ledger, not this" },
+        { "name": "public_slug", "type": "string", "required": true, "label": "Unguessable link id, 6 random bytes base64url" },
+        { "name": "language", "type": "string", "required": false, "label": "Detected spoken language; the reminder uses it" },
+        { "name": "transcript", "type": "string", "required": false, "label": "What was said, kept for reference" }
+      ],
+      "lifecycle_states": ["draft", "open", "paid"],
+      "state_machine": {
+        "states": ["draft", "open", "paid"],
+        "transitions": [
+          {
+            "from": "draft",
+            "to": "open",
+            "trigger": "owner_confirms_invoice",
+            "guard": "customer name, customer state, issue date, at least one line with description, positive quantity and rate, GST rate 0 to 28",
+            "ears": "WHEN the owner confirms the invoice form THE SYSTEM SHALL find or create the customer, assign the next invoice number under a per-workspace lock, save the invoice and lines, AND post debit receivable / credit revenue / credit GST payable in one transaction."
+          },
+          {
+            "from": "open",
+            "to": "paid",
+            "trigger": "owner_marks_paid",
+            "guard": "invoice belongs to the workspace and is open",
+            "ears": "WHEN the owner marks an open invoice paid THE SYSTEM SHALL record a manual Payment for the full total, set status paid, AND post debit bank / credit receivable in one transaction."
+          },
+          {
+            "from": "open",
+            "to": "paid",
+            "trigger": "payment_confirmed_by_gateway",
+            "guard": "Pine Labs webhook verified",
+            "ears": "WHEN Pine Labs confirms a payment against the invoice THE SYSTEM SHALL record it and mark the invoice paid.",
+            "build_status": "not-built",
+            "phase": "month-1"
+          }
+        ],
+        "notes": "draft is client-side only: the confirm form. Nothing is persisted before confirm (BR-SH-003). There is no cancelled or credited state; see OQ-INV-3."
+      },
+      "mutations": [
+        {
+          "id": "create_invoice",
+          "user_value": "Said once, saved right, books updated",
+          "trigger": "button_tap",
+          "ears": "WHEN the owner taps Save on the invoice confirm form THE SYSTEM SHALL validate with InvoiceForm, compute totals and the GST split server-side, and save with its ledger entry.",
+          "optimistic_behavior": "none; wait for the server, then go to the public invoice",
+          "rollback_behavior": "transaction rolls back if the ledger entry doesn't balance; show the error on the form",
+          "implemented_in": "src/app/actions.ts createInvoice"
+        },
+        {
+          "id": "mark_paid",
+          "user_value": "Money arrived; it's off my list",
+          "trigger": "button_tap",
+          "ears": "WHEN the owner taps Mark as paid THE SYSTEM SHALL post the payment and refresh Who owes me.",
+          "guard": "idempotent: a paid invoice is left alone",
+          "implemented_in": "src/app/actions.ts markPaid"
+        }
+      ]
+    },
+    {
+      "name": "InvoiceLine",
+      "user_value": "Each thing I did, with its code and GST",
+      "description": "One line of an invoice.",
+      "phase": "today",
+      "key_fields": [
+        { "name": "description", "type": "string", "required": true, "label": "In English" },
+        { "name": "sac_hsn", "type": "string", "required": false, "label": "Inherited from the matching WorkspaceService" },
+        { "name": "quantity", "type": "number", "required": true, "label": "Default 1" },
+        { "name": "rate", "type": "paise", "required": true, "label": "Per unit" },
+        { "name": "amount", "type": "paise", "required": true, "label": "round(quantity × rate)" },
+        { "name": "gst_rate", "type": "enum:0|5|12|18|28", "required": true, "label": "Percent" }
+      ]
+    },
+    {
+      "name": "Payment",
+      "user_value": "I can see when I got paid",
+      "description": "Money received against an invoice. Today always the full total, method manual.",
+      "phase": "today",
+      "key_fields": [
+        { "name": "invoice_id", "type": "id", "required": true, "label": "Invoice" },
+        { "name": "amount", "type": "paise", "required": true, "label": "Today always equals invoice total" },
+        { "name": "method", "type": "enum:upi|pine_labs|manual", "required": true, "label": "Only manual is written today" },
+        { "name": "paid_at", "type": "date", "required": true, "label": "When recorded" }
+      ]
+    },
+    {
+      "name": "Reminder",
+      "storage": "chase table",
+      "user_value": "A polite nudge in their language, ready to send, with a way to pay",
+      "description": "One drafted reminder for an open invoice: who drafted it, the message, any Pine Labs link, and the agent's run id and trace for the judges.",
+      "phase": "today",
+      "key_fields": [
+        { "name": "invoice_id", "type": "id", "required": true, "label": "Invoice" },
+        { "name": "source", "type": "enum:agenticorg|claude", "required": true, "label": "Who drafted it" },
+        { "name": "message", "type": "string", "required": true, "label": "WhatsApp text, ends with the pay link" },
+        { "name": "payment_link", "type": "url", "required": false, "label": "Pine Labs link if the agent made one" },
+        { "name": "agent_run_id", "type": "string", "required": false, "label": "AgenticOrg run id" },
+        { "name": "trace", "type": "json", "required": false, "label": "Agent output, tool calls, reasoning, error" }
+      ],
+      "lifecycle_states": ["drafted"],
+      "notes": "Drafting is recorded; actually sending happens in WhatsApp and is not observed. '/stats reminders sent' therefore counts drafts."
+    }
+  ],
+
+  "journeys": [
+    {
+      "name": "say_an_invoice",
+      "primary_actor": "owner",
+      "phase": "today",
+      "build_status": "built",
+      "trigger": "Owner holds the mic button on Home",
+      "preconditions": ["shared:Workspace active", "CAP-VOICE enabled"],
+      "steps": [
+        { "step": 1, "action": "Hold the mic and say it: 'Invoice Acme ₹40,000 for landing page design, 18% GST, due in 7 days.' In English, Hindi, Kannada or Malayalam.", "screen": "Home", "emotion": "hopeful" },
+        { "step": 2, "action": "Scribe returns the transcript and language; Claude returns invoice fields only (AGT-SCRIBE, AGT-EXTRACT).", "screen": "Home", "emotion": "waiting" },
+        { "step": 3, "action": "Confirm form appears filled: customer, state (assumed same as yours, said so), lines with SAC codes, GST rate, due date. Amounts large. Empty fields ask.", "screen": "InvoiceConfirm", "emotion": "checking" },
+        { "step": 4, "action": "Fix anything misheard; add the customer's WhatsApp number; Save.", "screen": "InvoiceConfirm", "emotion": "in control" },
+        { "step": 5, "action": "Invoice saved with its number and ledger entry; land on the public invoice.", "screen": "PublicInvoice", "emotion": "proud" }
+      ],
+      "failure_paths": [
+        "Mic denied or audio empty → type the invoice instead",
+        "Scribe fails → 'Couldn't hear that. Try again, a little closer to the mic.'",
+        "Extract misses a field → it stays empty and the form asks; GST rate is never guessed",
+        "Unbalanced ledger entry → save refused, nothing written"
+      ],
+      "success_outcome": "A numbered GST invoice exists at its own link and the receivable is in the books.",
+      "pain_points_surfaced": ["Amounts in Indian units ('1.5 lakh', 'saavira') are the most likely to be misheard"]
+    },
+    {
+      "name": "share_invoice",
+      "primary_actor": "owner",
+      "phase": "today",
+      "build_status": "built",
+      "trigger": "Invoice just saved, or opened from Home or Who owes me",
+      "preconditions": ["Invoice open", "Viewer is the owning workspace (owner-only share bar)"],
+      "steps": [
+        { "step": 1, "action": "See the invoice as the customer will, with UPI QR and Pay button.", "screen": "PublicInvoice" },
+        { "step": 2, "action": "Tap Send on WhatsApp (wa.me with the customer's number and a prefilled message with the link) or Copy.", "screen": "PublicInvoice" }
+      ],
+      "failure_paths": ["No customer phone → wa.me opens without a recipient; owner picks the chat"],
+      "success_outcome": "The customer has the link in WhatsApp."
+    },
+    {
+      "name": "customer_pays",
+      "primary_actor": "customer",
+      "phase": "today",
+      "build_status": "partial",
+      "trigger": "Customer opens the invoice link from WhatsApp",
+      "preconditions": ["Invoice exists with a valid public slug"],
+      "steps": [
+        { "step": 1, "action": "Open the link: seller, GSTIN, customer, lines with SAC/HSN, CGST/SGST or IGST, total, due date.", "screen": "PublicInvoice" },
+        { "step": 2, "action": "Tap Pay (upi://pay to the owner's UPI ID with amount and invoice number) or scan the QR from another phone.", "screen": "PublicInvoice" },
+        { "step": 3, "action": "Pay in their UPI app.", "screen": "external:UPI app" }
+      ],
+      "failure_paths": [
+        "Desktop browser → upi:// does nothing; scan the QR",
+        "Payment made → nothing tells the system; the owner must mark it paid (see OQ-INV-1)"
+      ],
+      "success_outcome": "Money reaches the owner's UPI account. The books catch up only when the owner marks it paid.",
+      "pain_points_surfaced": ["Paid but still shows open, so a reminder could go to someone who already paid"]
+    },
+    {
+      "name": "send_reminder",
+      "primary_actor": "owner",
+      "phase": "today",
+      "build_status": "built",
+      "trigger": "Owner taps Send reminder on an open invoice in Who owes me",
+      "preconditions": ["Invoice open", "CAP-REMIND enabled"],
+      "steps": [
+        { "step": 1, "action": "AgenticOrg ar_collections picks a tone from days overdue (≤0 friendly heads-up, 1 to 14 polite, >14 firm but courteous), makes a Pine Labs link, drafts under 60 words in the invoice's language.", "screen": "WhoOwesMe" },
+        { "step": 2, "action": "Preview the draft, the link and who drafted it (agent run, tone, tool calls).", "screen": "WhoOwesMe" },
+        { "step": 3, "action": "Tap Send on WhatsApp or Copy. The owner sends it from WhatsApp.", "screen": "external:WhatsApp" }
+      ],
+      "failure_paths": [
+        "AgenticOrg not configured or errors → Claude drafts against our invoice link",
+        "Claude fails → fixed English template",
+        "Agent message has no link → discarded in favour of the Claude draft"
+      ],
+      "success_outcome": "A reminder with a way to pay is in the customer's WhatsApp, sent by the owner.",
+      "pain_points_surfaced": ["Chasing feels awkward; a drafted, polite message in their language removes the awkwardness"]
+    },
+    {
+      "name": "mark_paid",
+      "primary_actor": "owner",
+      "phase": "today",
+      "build_status": "built",
+      "trigger": "Money arrived; owner taps Mark as paid",
+      "preconditions": ["Invoice open"],
+      "steps": [
+        { "step": 1, "action": "Tap Mark as paid on the invoice row.", "screen": "WhoOwesMe" },
+        { "step": 2, "action": "Payment posted; the customer's balance and the total drop.", "screen": "WhoOwesMe" }
+      ],
+      "failure_paths": ["Already paid → no-op"],
+      "success_outcome": "Receivable down, bank up, invoice off the list."
+    },
+    {
+      "name": "find_an_old_invoice",
+      "primary_actor": "owner",
+      "phase": "month-1",
+      "build_status": "not-built",
+      "trigger": "A client asks for an invoice from months ago",
+      "preconditions": [],
+      "steps": [
+        { "step": 1, "action": "Search or ask by customer or amount; open; reshare the link.", "screen": "not designed" }
+      ],
+      "failure_paths": [],
+      "success_outcome": "Link resent in seconds.",
+      "notes": "Named as a weekly pain in README. Today only open invoices (Who owes me) and the last 8 items on Home are reachable. Paid invoices have no list. See OQ-INV-6."
+    }
+  ],
+
+  "screens": [
+    {
+      "screen_id": "SCR-INV-001",
+      "name": "Home",
+      "route": "/",
+      "actor": "owner",
+      "journey_refs": ["say_an_invoice", "intent-bills:snap_a_bill"],
+      "reads": ["recentActivity", "whoOwesMe total", "gstForMonth", "profitForMonth"],
+      "writes": [],
+      "notes": "Mic and camera buttons, recent activity, the book totals. Without a workspace cookie / shows the landing page instead."
+    },
+    {
+      "screen_id": "SCR-INV-002",
+      "name": "InvoiceConfirm",
+      "route": "/ (replaces the capture card on Home)",
+      "actor": "owner",
+      "journey_refs": ["say_an_invoice"],
+      "reads": ["InvoiceExtract", "WorkspaceService"],
+      "writes": ["create_invoice"],
+      "empty_state": "Typed entry when there is no transcript",
+      "error_state": "Inline field errors from InvoiceForm"
+    },
+    {
+      "screen_id": "SCR-INV-003",
+      "name": "PublicInvoice",
+      "route": "/i/[slug]",
+      "actor": "customer (owner sees a share bar on top)",
+      "journey_refs": ["share_invoice", "customer_pays"],
+      "reads": ["Invoice", "InvoiceLine", "Workspace", "Customer"],
+      "writes": [],
+      "error_state": "Unknown slug → not found"
+    }
+  ],
+
+  "business_rules": [
+    {
+      "rule_id": "BR-INV-001",
+      "description": "GST split by state.",
+      "ears": "WHEN the supplier state equals the place of supply THE SYSTEM SHALL split GST into CGST and SGST (CGST = floor(half), SGST = the rest); OTHERWISE it SHALL charge IGST.",
+      "applies_to": ["Invoice"],
+      "source": "SPEC.md §Rules, src/lib/gst.ts splitGst"
+    },
+    {
+      "rule_id": "BR-INV-002",
+      "description": "Unknown customer state means same state as the owner, shown on the form.",
+      "ears": "WHEN the customer state was not spoken THE SYSTEM SHALL default it to the owner's state AND SHALL say 'Assumed same state as you, so CGST and SGST. Change it if not.'",
+      "applies_to": ["InvoiceConfirm"],
+      "enforced_in_ui": true,
+      "source": "SPEC.md §Rules, src/components/invoice-confirm.tsx"
+    },
+    {
+      "rule_id": "BR-INV-003",
+      "description": "Invoice numbers run in sequence per workspace per financial year.",
+      "ears": "WHEN an invoice is saved THE SYSTEM SHALL take a per-workspace advisory lock AND number it INV-<FY code>-<next 4-digit sequence> for that financial year.",
+      "applies_to": ["Invoice"],
+      "source": "SPEC.md §Rules, src/app/actions.ts"
+    },
+    {
+      "rule_id": "BR-INV-004",
+      "description": "Totals are computed on the server, not trusted from the client.",
+      "ears": "WHEN an invoice is saved THE SYSTEM SHALL recompute line amounts, GST, split and total from quantity, rate, GST rate and the two states.",
+      "applies_to": ["Invoice", "InvoiceLine"],
+      "source": "src/app/actions.ts createInvoice"
+    },
+    {
+      "rule_id": "BR-INV-005",
+      "description": "Customers are matched by name.",
+      "ears": "WHEN an invoice names a customer THE SYSTEM SHALL reuse the workspace customer whose name matches case-insensitively, updating the phone if a new one is given, OR create one.",
+      "applies_to": ["Customer"],
+      "source": "src/app/actions.ts createInvoice"
+    },
+    {
+      "rule_id": "BR-INV-006",
+      "description": "Reminder tone follows lateness; no reminder sends itself.",
+      "ears": "WHEN drafting a reminder THE SYSTEM SHALL choose a friendly heads-up at 0 or fewer days overdue, a polite reminder at 1 to 14, and firm but courteous over 14, AND SHALL NOT send it; the owner sends it from WhatsApp.",
+      "applies_to": ["Reminder"],
+      "source": "src/lib/agenticorg.ts"
+    },
+    {
+      "rule_id": "BR-INV-007",
+      "description": "Days overdue counts from the due date, or the issue date if there is none.",
+      "ears": "WHEN computing days overdue THE SYSTEM SHALL measure from the due date if set, ELSE from the issue date, to today in IST.",
+      "applies_to": ["Reminder"],
+      "source": "src/app/api/chase/route.ts"
+    }
+  ],
+
+  "open_questions": [
+    {
+      "id": "OQ-INV-1",
+      "plain": "How does the app know a customer paid?",
+      "question": "The UPI deep link can't confirm payment, and a Pine Labs link from the agent isn't reconciled either: no webhook marks the invoice paid, and payment.method is only ever 'manual'. ROADMAP Month 1 promises 'the invoice marks itself paid'. For today, is manual Mark as paid enough, and should the public page tell the customer to send a screenshot?",
+      "raised_by_role": "product-owner",
+      "evidence": ["src/app/actions.ts markPaid", "src/lib/agenticorg.ts", "ROADMAP.md Month 1"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-INV-2",
+      "plain": "Do B2B invoices need the customer's GSTIN?",
+      "question": "customer.gstin exists and the public page reads it, but neither voice extract nor the confirm form captures it. A GST-registered customer needs it on the invoice to claim input credit. Add it to the confirm form (optional), and to the extract?",
+      "raised_by_role": "product-owner",
+      "evidence": ["db/schema.sql customer.gstin", "src/lib/schemas.ts InvoiceForm has no customer_gstin"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-INV-3",
+      "plain": "What do you do about a wrong invoice after saving?",
+      "question": "Editing after save is cut (rank 5) and there is no cancel. GST practice is a credit note, not a delete. Today a misheard ₹4,00,000 saved instead of ₹40,000 sits in receivable and revenue forever. Minimum for today: a void that posts a reversing entry? Or accept it for the event?",
+      "raised_by_role": "product-owner",
+      "evidence": ["SPEC.md §Cut order 5", "Invoice state machine has no cancelled state"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-INV-4",
+      "plain": "Can a customer pay part of an invoice?",
+      "question": "Mark as paid always records the full total. TDS makes this common: a client paying ₹40,000 of professional fees often sends ₹36,000 and deducts 10%. Do we support a partial or 'paid less TDS' amount today, or is TDS tracking strictly months 4 to 6?",
+      "raised_by_role": "product-owner",
+      "evidence": ["src/app/actions.ts markPaid", "README.md TDS pain", "ROADMAP.md months 4 to 6"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-INV-5",
+      "plain": "Mixed GST rates on one invoice?",
+      "question": "The extract returns one gst_rate for the whole invoice while each line stores its own. Is one spoken rate applied to every line the intended behaviour, with per-line edits on the form for the rare mixed case?",
+      "raised_by_role": "engineer",
+      "evidence": ["src/lib/schemas.ts InvoiceExtract.gst_rate", "InvoiceForm.lines[].gst_rate"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-INV-6",
+      "plain": "Where do paid invoices go?",
+      "question": "Once paid an invoice drops off Who owes me, and Home shows only the last 8 items. 'Digging up an old invoice' is a weekly pain in README. Is an all-invoices list in today's scope or Month 1?",
+      "raised_by_role": "product-owner",
+      "evidence": ["src/lib/books.ts recentActivity limit 8", "README.md §The problem"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-INV-7",
+      "plain": "Which language should the reminder be in?",
+      "question": "The reminder follows the language the owner spoke the invoice in. The customer may not read Kannada even if the owner speaks it. Should reminder language be a per-customer choice on the preview?",
+      "raised_by_role": "product-owner",
+      "evidence": ["src/app/api/chase/route.ts languageName(inv.language)"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-INV-8",
+      "plain": "Two ways to pay, two records?",
+      "question": "When the agent makes a Pine Labs link, the reminder carries it while the invoice page offers UPI. A customer could pay either; neither updates the books. Should the Pine Labs link also appear on the public invoice, so there is one place to pay?",
+      "raised_by_role": "engineer",
+      "evidence": ["src/app/api/chase/route.ts link selection", "src/app/i/[slug]/page.tsx"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-INV-9",
+      "plain": "Same name, different customers?",
+      "question": "Customers are matched by name only. 'Acme' and 'Acme Pvt Ltd' become two; two different 'Ravi's become one, merging what they owe. Acceptable for today?",
+      "raised_by_role": "engineer",
+      "evidence": ["BR-INV-005"],
+      "status": "open"
+    }
+  ],
+
+  "exclusions": [
+    { "id": "E-INV-001", "description": "Editing an invoice after it is saved.", "treatment": "Cut (rank 5).", "source": "SPEC.md §Cut order" },
+    { "id": "E-INV-002", "description": "Reminders that send themselves when overdue.", "treatment": "Roadmap Month 1.", "source": "ROADMAP.md" },
+    { "id": "E-INV-003", "description": "Recurring invoices for retainers.", "treatment": "Roadmap Month 1.", "source": "ROADMAP.md" },
+    { "id": "E-INV-004", "description": "Pine Labs live payments that mark the invoice paid.", "treatment": "Roadmap Month 1.", "source": "ROADMAP.md" },
+    { "id": "E-INV-005", "description": "WhatsApp Business API sending.", "treatment": "Out; wa.me hand-off by design (ADR-006).", "source": "SPEC.md" },
+    { "id": "E-INV-006", "description": "GSTR-1 from invoices.", "treatment": "Roadmap Month 3.", "source": "ROADMAP.md" }
+  ]
+}

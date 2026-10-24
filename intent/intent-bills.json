@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "version": "0.1.0",
+    "created": "2026-10-24",
+    "last_updated": "2026-10-24",
+    "project_name": "Say it, get paid (AI Builder's Day '26)",
+    "bounded_context": "bills",
+    "scope_status": "core, first to cut",
+    "summary": "Money out: snap a bill, confirm it, log the expense and the GST you can claim back.",
+    "references": ["intent-shared.json", "intent-books.json", "entitlements.json"],
+    "cut_note": "Cut rank 1. Built 15:00 to 16:00 only if the 13:00 checkpoint passed. Without bills, GST this month is only half a number."
+  },
+
+  "entities": [
+    {
+      "name": "Bill",
+      "user_value": "My lunch, my software, my rent, logged from a photo, with the GST I can get back",
+      "description": "A purchase from a seller, treated as already paid from the bank. Saving posts expenses, any claimable input GST, and a bank credit in one transaction.",
+      "phase": "today",
+      "key_fields": [
+        { "name": "workspace_id", "type": "id", "required": true, "label": "Workspace" },
+        { "name": "seller_name", "type": "string", "required": true, "label": "Who sold it" },
+        { "name": "seller_gstin", "type": "string", "required": false, "label": "Seller GSTIN; without it, no input credit" },
+        { "name": "bill_date", "type": "date", "required": true, "label": "Bill date; also the ledger entry date" },
+        { "name": "category", "type": "enum:travel|food|software|equipment|rent|other", "required": true, "label": "Fixed list; profit splits expenses by it" },
+        { "name": "subtotal", "type": "paise", "required": true, "label": "Stored as total − (CGST+SGST+IGST)" },
+        { "name": "cgst", "type": "paise", "required": true, "label": "As printed" },
+        { "name": "sgst", "type": "paise", "required": true, "label": "As printed" },
+        { "name": "igst", "type": "paise", "required": true, "label": "As printed" },
+        { "name": "total", "type": "paise", "required": true, "label": "What was paid" }
+      ],
+      "lifecycle_states": ["draft", "logged"],
+      "state_machine": {
+        "states": ["draft", "logged"],
+        "transitions": [
+          {
+            "from": "draft",
+            "to": "logged",
+            "trigger": "owner_confirms_bill",
+            "guard": "seller name, date, category, positive total; GST heads non-negative",
+            "ears": "WHEN the owner confirms the bill form THE SYSTEM SHALL save the bill AND post its expense entry in one transaction, claiming input GST only if the seller GSTIN is valid."
+          }
+        ],
+        "notes": "draft is the confirm form only; the photo is never stored (BR-SH-010). No edit, delete or unpaid state today."
+      },
+      "mutations": [
+        {
+          "id": "create_bill",
+          "user_value": "One photo, one tap, it's in the books",
+          "trigger": "button_tap",
+          "ears": "WHEN the owner taps Save on the bill confirm form THE SYSTEM SHALL validate with BillForm and post the entry.",
+          "optimistic_behavior": "none",
+          "rollback_behavior": "transaction rolls back on an unbalanced entry",
+          "feedback": "Toast: 'Logged. ₹X GST to claim back.' or 'Logged as an expense.'",
+          "implemented_in": "src/app/actions.ts createBill"
+        }
+      ]
+    }
+  ],
+
+  "journeys": [
+    {
+      "name": "snap_a_bill",
+      "primary_actor": "owner",
+      "phase": "today",
+      "build_status": "built",
+      "trigger": "Owner taps the camera button on Home",
+      "preconditions": ["shared:Workspace active", "CAP-BILLS enabled"],
+      "steps": [
+        { "step": 1, "action": "Take a photo of a bill or receipt (rear camera via file input capture).", "screen": "Home", "emotion": "quick" },
+        { "step": 2, "action": "Claude reads it into fields only (AGT-BILLREAD).", "screen": "Home", "emotion": "waiting" },
+        { "step": 3, "action": "Confirm form: seller, seller GSTIN, date, category, CGST/SGST/IGST, total. If there is GST but no valid GSTIN: 'No GSTIN on this bill, so its GST can't be claimed.'", "screen": "BillConfirm", "emotion": "checking" },
+        { "step": 4, "action": "Fix and Save. Toast says how much GST can be claimed back.", "screen": "BillConfirm", "emotion": "relieved" }
+      ],
+      "failure_paths": [
+        "Handwritten or blurry bill → fields come back empty and the form asks; that's fine",
+        "Not a bill at all → empty form; cancel",
+        "Unbalanced entry → refused"
+      ],
+      "success_outcome": "Expense in the books by category; claimable GST in input accounts, so GST this month goes down.",
+      "pain_points_surfaced": [
+        "Everyone at the event has a lunch bill, which makes this the easiest way in for a new user (BRIEF-chetan.md)"
+      ]
+    }
+  ],
+
+  "screens": [
+    {
+      "screen_id": "SCR-BIL-001",
+      "name": "BillConfirm",
+      "route": "/ (replaces the capture card on Home)",
+      "actor": "owner",
+      "journey_refs": ["snap_a_bill"],
+      "reads": ["BillExtract"],
+      "writes": ["create_bill"],
+      "error_state": "Inline field errors from BillForm"
+    }
+  ],
+
+  "business_rules": [
+    {
+      "rule_id": "BR-BIL-001",
+      "description": "A bill is treated as already paid from the bank.",
+      "ears": "WHEN a bill is saved THE SYSTEM SHALL credit bank its total.",
+      "applies_to": ["Bill"],
+      "source": "SPEC.md §Rules"
+    },
+    {
+      "rule_id": "BR-BIL-002",
+      "description": "No seller GSTIN, no input credit.",
+      "ears": "IF the bill has no seller GSTIN, or one that fails the GSTIN check, THEN THE SYSTEM SHALL debit expenses the whole total AND post nothing to the input GST accounts, AND SHALL say so on the confirm form.",
+      "applies_to": ["Bill"],
+      "enforced_in_ui": true,
+      "source": "SPEC.md §Rules, src/components/bill-confirm.tsx"
+    },
+    {
+      "rule_id": "BR-BIL-003",
+      "description": "With a valid seller GSTIN, GST goes to input credit.",
+      "ears": "WHEN the seller GSTIN is valid THE SYSTEM SHALL debit expenses the subtotal AND debit cgst_input, sgst_input and igst_input their printed amounts.",
+      "applies_to": ["Bill"],
+      "source": "SPEC.md §Rules, src/app/actions.ts createBill"
+    },
+    {
+      "rule_id": "BR-BIL-004",
+      "description": "Categories are a fixed list.",
+      "ears": "WHEN categorising a bill THE SYSTEM SHALL use one of travel, food, software, equipment, rent, other.",
+      "applies_to": ["Bill"],
+      "source": "SPEC.md §Data contract"
+    }
+  ],
+
+  "open_questions": [
+    {
+      "id": "OQ-BIL-1",
+      "plain": "Should a lunch bill give GST credit?",
+      "question": "Food and beverages are a blocked credit under GST (Section 17(5)), and restaurant GST at 5% carries no input credit at all. Today a restaurant bill with a valid GSTIN posts its GST to input accounts and lowers 'GST to pay'. The lunch bill is our planned easy way in and on-stage demo. Should category 'food' (and possibly others) never claim input credit, with a line saying why?",
+      "raised_by_role": "product-owner",
+      "evidence": ["src/app/actions.ts createBill claimable = GSTIN only", "BRIEF-chetan.md lunch bill", "TODO.md 'a photo of a lunch bill saves'"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-BIL-2",
+      "plain": "What if the bill's own subtotal disagrees?",
+      "question": "Subtotal is stored as total minus the GST heads; the extracted subtotal is shown but not used. Bills with service charge, tips, discounts or round-off won't add up. Which number wins, and does the form warn when they disagree?",
+      "raised_by_role": "engineer",
+      "evidence": ["src/app/actions.ts createBill subtotal = total − gst"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-BIL-3",
+      "plain": "Paid from my own pocket?",
+      "question": "Every bill credits bank. README names personal and business spending mixed in one account as a monthly pain; cash and personal-card payments are common. Is a 'paid personally' or 'cash' option in scope, or is one bank account the honest simplification for today?",
+      "raised_by_role": "product-owner",
+      "evidence": ["BR-BIL-001", "README.md §The problem"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-BIL-4",
+      "plain": "Is the GST split on a bill checked?",
+      "question": "CGST/SGST/IGST are taken as printed. Should the form check them against the seller's state (from the GSTIN) and the owner's state, the way invoices compute it?",
+      "raised_by_role": "engineer",
+      "evidence": ["BillExtract.seller_state is extracted but unused on save"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-BIL-5",
+      "plain": "What if the same bill is snapped twice?",
+      "question": "Nothing de-duplicates. Same seller, date and total twice doubles the expense and the input credit. Warn on a likely duplicate?",
+      "raised_by_role": "engineer",
+      "evidence": ["No uniqueness on bill"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-BIL-6",
+      "plain": "Which GSTIN check do bills use?",
+      "question": "Workspace GSTINs get the full check (shape, state code, check character, state match). Bills use isGstin. Confirm bills get the same check character test, so a misread digit doesn't create a claim.",
+      "raised_by_role": "engineer",
+      "evidence": ["src/lib/gstin.ts", "src/app/actions.ts createBill isGstin"],
+      "status": "resolved",
+      "resolution": "isGstin is checkGstin(s).ok, so bills get shape, state code and check character. Only the state match is skipped, which is right: the seller can be in any state.",
+      "resolved_date": "2026-10-24"
+    }
+  ],
+
+  "exclusions": [
+    { "id": "E-BIL-001", "description": "Bills you haven't paid yet, and who you owe.", "treatment": "Roadmap Month 2.", "source": "ROADMAP.md" },
+    { "id": "E-BIL-002", "description": "Storing the bill photo.", "treatment": "Out by design (ADR-009).", "source": "SPEC.md" },
+    { "id": "E-BIL-003", "description": "Input credit checked against what sellers filed (GSTR-2B).", "treatment": "Roadmap Month 3.", "source": "ROADMAP.md" },
+    { "id": "E-BIL-004", "description": "Editing or deleting a logged bill.", "treatment": "Not planned for today.", "source": "src/app/actions.ts" },
+    { "id": "E-BIL-005", "description": "Bank statement upload and matching.", "treatment": "Roadmap Month 2.", "source": "ROADMAP.md" }
+  ]
+}

@@ -1,0 +1,257 @@
+{
+  "meta": {
+    "version": "0.1.0",
+    "created": "2026-10-24",
+    "last_updated": "2026-10-24",
+    "project_name": "Say it, get paid (AI Builder's Day '26)",
+    "bounded_context": "books",
+    "scope_status": "core",
+    "summary": "Double-entry ledger under everything, read as plain views: who owes me, GST this month, profit, balances, journal. Plus /stats for the traction slide.",
+    "references": ["intent-shared.json", "intent-invoicing.json", "intent-bills.json", "entitlements.json"]
+  },
+
+  "entities": [
+    {
+      "name": "Account",
+      "user_value": "I never see this, and my books are still right",
+      "description": "A fixed chart of ten accounts. No chart-of-accounts screen.",
+      "phase": "today",
+      "values": [
+        { "id": "receivable", "kind": "asset", "normal_balance": "debit", "plain": "Who owes me" },
+        { "id": "bank", "kind": "asset", "normal_balance": "debit", "plain": "Money in the bank" },
+        { "id": "cgst_input", "kind": "asset", "normal_balance": "debit", "plain": "CGST I can claim back" },
+        { "id": "sgst_input", "kind": "asset", "normal_balance": "debit", "plain": "SGST I can claim back" },
+        { "id": "igst_input", "kind": "asset", "normal_balance": "debit", "plain": "IGST I can claim back" },
+        { "id": "cgst_payable", "kind": "liability", "normal_balance": "credit", "plain": "CGST I collected" },
+        { "id": "sgst_payable", "kind": "liability", "normal_balance": "credit", "plain": "SGST I collected" },
+        { "id": "igst_payable", "kind": "liability", "normal_balance": "credit", "plain": "IGST I collected" },
+        { "id": "revenue", "kind": "income", "normal_balance": "credit", "plain": "Sales" },
+        { "id": "expenses", "kind": "expense", "normal_balance": "debit", "plain": "Spending" }
+      ],
+      "not_modeled": ["Equity / owner's drawings", "Cash separate from bank", "Accounts payable (Month 2)", "TDS receivable (months 4 to 6)"]
+    },
+    {
+      "name": "LedgerEntry",
+      "user_value": "Every rupee has a reason I can trace",
+      "description": "One balanced journal entry, posted by exactly one source document.",
+      "phase": "today",
+      "key_fields": [
+        { "name": "workspace_id", "type": "id", "required": true, "label": "Workspace" },
+        { "name": "date", "type": "date", "required": true, "label": "Document date (issue date, bill date, or payment day in IST)" },
+        { "name": "memo", "type": "string", "required": true, "label": "'Invoice INV-2627-0001 to Acme', 'Payment for …', 'Bill from …'" },
+        { "name": "source_type", "type": "enum:invoice|payment|bill", "required": true, "label": "What posted it" },
+        { "name": "source_id", "type": "id", "required": true, "label": "The invoice, payment or bill" }
+      ],
+      "lifecycle_states": ["posted"],
+      "notes": "Append-only. No edit, no delete, no reversal today."
+    },
+    {
+      "name": "LedgerLine",
+      "description": "One debit or credit against one account. Receivable lines carry the customer, which is what makes Who owes me a ledger read.",
+      "phase": "today",
+      "key_fields": [
+        { "name": "entry_id", "type": "id", "required": true, "label": "LedgerEntry" },
+        { "name": "account", "type": "enum:Account", "required": true, "label": "One of the ten" },
+        { "name": "debit", "type": "paise", "required": true, "label": "≥ 0" },
+        { "name": "credit", "type": "paise", "required": true, "label": "≥ 0" },
+        { "name": "customer_id", "type": "id", "required": false, "label": "Set on receivable lines" }
+      ]
+    }
+  ],
+
+  "posting_rules": [
+    {
+      "source": "invoice",
+      "lines": [
+        { "account": "receivable", "side": "debit", "amount": "total", "customer": true },
+        { "account": "revenue", "side": "credit", "amount": "subtotal" },
+        { "account": "cgst_payable", "side": "credit", "amount": "cgst" },
+        { "account": "sgst_payable", "side": "credit", "amount": "sgst" },
+        { "account": "igst_payable", "side": "credit", "amount": "igst" }
+      ]
+    },
+    {
+      "source": "payment",
+      "lines": [
+        { "account": "bank", "side": "debit", "amount": "amount" },
+        { "account": "receivable", "side": "credit", "amount": "amount", "customer": true }
+      ]
+    },
+    {
+      "source": "bill (valid seller GSTIN)",
+      "lines": [
+        { "account": "expenses", "side": "debit", "amount": "subtotal" },
+        { "account": "cgst_input", "side": "debit", "amount": "cgst" },
+        { "account": "sgst_input", "side": "debit", "amount": "sgst" },
+        { "account": "igst_input", "side": "debit", "amount": "igst" },
+        { "account": "bank", "side": "credit", "amount": "total" }
+      ]
+    },
+    {
+      "source": "bill (no valid seller GSTIN)",
+      "lines": [
+        { "account": "expenses", "side": "debit", "amount": "total" },
+        { "account": "bank", "side": "credit", "amount": "total" }
+      ]
+    }
+  ],
+
+  "journeys": [
+    {
+      "name": "see_who_owes_me",
+      "primary_actor": "owner",
+      "phase": "today",
+      "build_status": "built",
+      "trigger": "Owner opens Who owes me from Home",
+      "preconditions": ["shared:Workspace active"],
+      "steps": [
+        { "step": 1, "action": "Total owed at the top, read from the receivable balance.", "screen": "WhoOwesMe" },
+        { "step": 2, "action": "Customers by balance; open invoices oldest due first, with days overdue.", "screen": "WhoOwesMe" },
+        { "step": 3, "action": "Per invoice: Send reminder, or Mark as paid.", "screen": "WhoOwesMe", "journey_ref": "intent-invoicing:send_reminder, intent-invoicing:mark_paid" }
+      ],
+      "failure_paths": ["Nothing owed → empty state"],
+      "success_outcome": "The owner knows who to chase today."
+    },
+    {
+      "name": "see_gst_this_month",
+      "primary_actor": "owner",
+      "phase": "today",
+      "build_status": "built",
+      "trigger": "Owner opens GST this month from Home",
+      "preconditions": ["shared:Workspace active", "CAP-GST-VIEW enabled"],
+      "steps": [
+        { "step": 1, "action": "GST collected on invoices, minus GST paid on bills, equals GST to pay, split CGST, SGST, IGST.", "screen": "GstThisMonth" },
+        { "step": 2, "action": "If negative, shown as credit carried forward, not a refund.", "screen": "GstThisMonth" }
+      ],
+      "failure_paths": ["No bills logged → only collected; half a number"],
+      "success_outcome": "The owner knows roughly what GST they owe this month."
+    },
+    {
+      "name": "see_profit_and_books",
+      "primary_actor": "owner",
+      "phase": "today",
+      "build_status": "built",
+      "trigger": "Owner taps the profit card on Home",
+      "preconditions": ["shared:Workspace active"],
+      "steps": [
+        { "step": 1, "action": "Profit this month: sales less expenses, expenses by bill category, six-month trend.", "screen": "Books" },
+        { "step": 2, "action": "Every account's debit or credit balance, with a check that debits and credits total the same.", "screen": "Books" },
+        { "step": 3, "action": "The last 20 journal entries.", "screen": "Books" }
+      ],
+      "failure_paths": [],
+      "success_outcome": "'You made ₹X this month' and proof the books balance."
+    },
+    {
+      "name": "show_traction",
+      "primary_actor": "operator",
+      "phase": "today",
+      "build_status": "built",
+      "trigger": "Every 30 minutes from 16:00; screenshot at 19:30; on stage",
+      "preconditions": [],
+      "steps": [
+        { "step": 1, "action": "Open /stats: ₹ invoiced today, large; people, invoices, bills, reminders today.", "screen": "Stats" },
+        { "step": 2, "action": "Chetan reports the count to Rahul; screenshot for the deck.", "screen": "external" }
+      ],
+      "failure_paths": ["Team test data inflates the numbers (intent-shared OQ-SH-3)"],
+      "success_outcome": "'₹X invoiced through this today' on the traction slide."
+    }
+  ],
+
+  "screens": [
+    { "screen_id": "SCR-BKS-001", "name": "WhoOwesMe", "route": "/owed", "actor": "owner", "journey_refs": ["see_who_owes_me"], "reads": ["whoOwesMe"], "writes": ["intent-invoicing:mark_paid", "intent-invoicing:send_reminder"] },
+    { "screen_id": "SCR-BKS-002", "name": "GstThisMonth", "route": "/gst", "actor": "owner", "journey_refs": ["see_gst_this_month"], "reads": ["gstForMonth"], "writes": [] },
+    { "screen_id": "SCR-BKS-003", "name": "Books", "route": "/books", "actor": "owner", "journey_refs": ["see_profit_and_books"], "reads": ["profitForMonth", "monthlyTotals", "accountBalances", "journal"], "writes": [] },
+    { "screen_id": "SCR-BKS-004", "name": "Stats", "route": "/stats", "actor": "operator, judge", "journey_refs": ["show_traction"], "reads": ["statsToday"], "writes": [] }
+  ],
+
+  "business_rules": [
+    {
+      "rule_id": "BR-BKS-001",
+      "description": "Every entry balances, checked twice.",
+      "ears": "WHEN posting an entry THE SYSTEM SHALL drop zero lines AND refuse the entry unless total debits equal total credits and are above zero; a deferred Postgres constraint trigger SHALL re-check at commit.",
+      "applies_to": ["LedgerEntry", "LedgerLine"],
+      "source": "SPEC.md §Rules, src/lib/ledger.ts, db/schema.sql ledger_line_balanced"
+    },
+    {
+      "rule_id": "BR-BKS-002",
+      "description": "Who owes me is the ledger, not invoice status.",
+      "ears": "WHEN showing what a customer owes THE SYSTEM SHALL sum receivable debits minus credits on lines tagged with that customer, and SHALL list customers whose balance is non-zero.",
+      "applies_to": ["WhoOwesMe"],
+      "source": "SPEC.md §Rules"
+    },
+    {
+      "rule_id": "BR-BKS-003",
+      "description": "GST to pay is payable minus input for the month.",
+      "ears": "WHEN showing GST for a month THE SYSTEM SHALL compute, per head, *_payable credits minus *_input debits from entries dated in that month, AND SHALL show a negative total as credit carried forward, not a refund.",
+      "applies_to": ["GstThisMonth", "Home"],
+      "source": "SPEC.md §Rules, src/lib/books.ts gstForMonth"
+    },
+    {
+      "rule_id": "BR-BKS-004",
+      "description": "Profit is revenue less expenses from the ledger, by document date.",
+      "ears": "WHEN showing profit for a month THE SYSTEM SHALL take revenue credits minus debits less expenses debits minus credits for entries dated in that month, with expenses split by the category of the bill that posted them.",
+      "applies_to": ["Books", "Home"],
+      "source": "b377a53, src/lib/books.ts profitForMonth"
+    },
+    {
+      "rule_id": "BR-BKS-005",
+      "description": "Stats count today in IST.",
+      "ears": "WHEN showing /stats THE SYSTEM SHALL count workspaces, invoices, bills and reminders created today in Asia/Kolkata, and sum invoice totals created today.",
+      "applies_to": ["Stats"],
+      "source": "src/lib/books.ts statsToday"
+    }
+  ],
+
+  "open_questions": [
+    {
+      "id": "OQ-BKS-1",
+      "plain": "Does the GST credit actually carry forward?",
+      "question": "A negative month is labelled 'credit carried forward', but gstForMonth only looks at one month; next month starts from zero and the credit is lost from the number. Carry the prior balance in, or relabel it as 'more GST paid than collected this month'?",
+      "raised_by_role": "product-owner",
+      "evidence": ["src/lib/books.ts gstForMonth filters to one month", "src/app/page.tsx 'Credit carried forward'"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-BKS-2",
+      "plain": "Two views, or a books page?",
+      "question": "README and SPEC say the books show as two views only. b377a53 added /books with profit, balances and the journal. Which is the story for judges: 'two plain views' (simple), or 'real books you can inspect' (credible)? It changes the demo and the deck.",
+      "raised_by_role": "product-owner",
+      "evidence": ["README.md 'They show as two views only'", "b377a53"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-BKS-3",
+      "plain": "Net GST per head, or overall?",
+      "question": "The view nets CGST, SGST and IGST separately and also gives an overall net. Under GST set-off rules IGST credit can pay CGST and SGST, but CGST credit can't pay SGST. A per-head negative next to a positive overall is confusing. Show only the overall today and leave set-off for GSTR-3B in Month 3?",
+      "raised_by_role": "product-owner",
+      "evidence": ["src/lib/books.ts gstForMonth heads"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-BKS-4",
+      "plain": "Is 'profit' the right word?",
+      "question": "Profit is accrual: revenue counts when the invoice is issued, not when paid, and bills count when dated. A freelancer may read 'you made ₹X' as cash in hand. Keep 'profit', or say 'billed less spent' and add cash received later?",
+      "raised_by_role": "product-owner",
+      "evidence": ["BR-BKS-004"],
+      "status": "open"
+    },
+    {
+      "id": "OQ-BKS-5",
+      "plain": "How do we fix a wrong entry?",
+      "question": "The ledger is append-only with no reversal. Any fix to an invoice or bill (intent-invoicing OQ-INV-3, intent-bills OQ-BIL-5) needs a reversing entry type. Add source_type 'reversal' when one of those is decided.",
+      "raised_by_role": "engineer",
+      "evidence": ["src/lib/ledger.ts sourceType union"],
+      "status": "open"
+    }
+  ],
+
+  "exclusions": [
+    { "id": "E-BKS-001", "description": "Chart-of-accounts screen or custom accounts.", "treatment": "Out; fixed list by design.", "source": "SPEC.md" },
+    { "id": "E-BKS-002", "description": "Warning before crossing the ₹20 lakh GST registration limit.", "treatment": "Roadmap Month 2.", "source": "ROADMAP.md" },
+    { "id": "E-BKS-003", "description": "Profit in plain words ('Software was your biggest cost').", "treatment": "Roadmap Month 2; the numbers exist on /books today.", "source": "ROADMAP.md" },
+    { "id": "E-BKS-004", "description": "GSTR-1, GSTR-3B, CA export.", "treatment": "Roadmap Month 3.", "source": "ROADMAP.md" },
+    { "id": "E-BKS-005", "description": "Advance tax worked out from the books, 44ADA first, 15 March leading.", "treatment": "Roadmap Month 3.", "source": "ROADMAP.md" },
+    { "id": "E-BKS-006", "description": "TDS tracking matched to Form 26AS; year-end ITR summary; proof of income.", "treatment": "Roadmap months 4 to 6.", "source": "ROADMAP.md" },
+    { "id": "E-BKS-007", "description": "Account Aggregator bank data; lending against invoices.", "treatment": "Roadmap months 4 to 6, via licensed partners.", "source": "ROADMAP.md" }
+  ]
+}
