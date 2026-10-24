@@ -6,8 +6,7 @@ const API = `${BASE_URL}/api/v1`
 // "Say it get paid: Collections" in our AgenticOrg org.
 const COLLECTIONS_AGENT_ID = process.env.AGENTICORG_COLLECTIONS_AGENT_ID ?? 'c17ea5b6-f3de-4f23-91c0-2894d4311779'
 
-// The hackathon instance rejects our API key, so we sign in as a member and use the session token.
-export const agenticOrgReady = () => Boolean(process.env.AGENTICORG_EMAIL && process.env.AGENTICORG_PASSWORD)
+export const agenticOrgReady = () => Boolean(process.env.AGENTICORG_API_KEY)
 
 type AgentRunResult = {
   run_id?: string
@@ -19,33 +18,14 @@ type AgentRunResult = {
   hitl_trigger?: string | null
 }
 
-// Sessions last an hour; reuse one across requests on a warm instance.
-let session: { token: string; expires: number } | null = null
-
-async function token(fresh = false) {
-  if (!fresh && session && session.expires > Date.now()) return session.token
-  const res = await fetch(`${API}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: process.env.AGENTICORG_EMAIL, password: process.env.AGENTICORG_PASSWORD }),
-    signal: AbortSignal.timeout(15_000),
-  })
-  if (!res.ok) throw new Error(`AgenticOrg login failed: ${res.status}`)
-  const { access_token } = (await res.json()) as { access_token: string }
-  session = { token: access_token, expires: Date.now() + 50 * 60_000 }
-  return access_token
-}
-
+// Agents run by UUID. A type name like 'ar_collections' goes to a different endpoint and the key is rejected.
 async function runAgent(agentId: string, body: unknown): Promise<AgentRunResult> {
-  const call = async (fresh: boolean) =>
-    fetch(`${API}/agents/${agentId}/run`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token(fresh)}` },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(45_000),
-    })
-  let res = await call(false)
-  if (res.status === 401) res = await call(true)
+  const res = await fetch(`${API}/agents/${agentId}/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.AGENTICORG_API_KEY}` },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(45_000),
+  })
   if (!res.ok) throw new Error(`AgenticOrg run failed: ${res.status} ${(await res.text()).slice(0, 200)}`)
   return (await res.json()) as AgentRunResult
 }
