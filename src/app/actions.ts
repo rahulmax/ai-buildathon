@@ -54,6 +54,38 @@ export async function saveDetails(_: ActionState, form: FormData): Promise<Actio
   redirect('/')
 }
 
+// Settings: the same fields as setup. Sent invoices keep the details they were issued with.
+export async function updateDetails(_: ActionState, form: FormData): Promise<ActionState> {
+  const ws = await requireWorkspace()
+  let services: unknown = []
+  try {
+    services = JSON.parse(String(form.get('services') ?? '[]'))
+  } catch {}
+  const parsed = DetailsForm.safeParse({ ...Object.fromEntries(form), services })
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  const d = parsed.data
+  let gstin: string | null = null
+  if (d.gstin) {
+    const check = checkGstin(d.gstin, d.state)
+    if (!check.ok) return { error: check.error }
+    gstin = check.gstin
+  }
+  const sql = await db()
+  await sql.begin(async (tx) => {
+    await tx`
+      update workspace set name = ${d.name}, state = ${d.state}, gstin = ${gstin}, upi_id = ${d.upi_id}
+      where id = ${ws.id}`
+    await tx`delete from workspace_service where workspace_id = ${ws.id}`
+    for (const s of d.services) {
+      await tx`
+        insert into workspace_service (workspace_id, name, kind, code, code_description)
+        values (${ws.id}, ${s.name}, ${s.kind}, ${s.code}, ${s.code_description})`
+    }
+  })
+  revalidatePath('/', 'layout')
+  redirect('/')
+}
+
 export type InvoiceFormData = { registered: boolean; customers: CustomerOption[] }
 
 // What the confirm form needs: can this workspace charge GST, and who its customers are.

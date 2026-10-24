@@ -191,3 +191,11 @@ alter table ledger_line add constraint ledger_line_account_check check (account 
 -- access: a "Save with email" link carries the email to attach once the link is clicked.
 -- Sign-in links leave it null.
 alter table magic_link add column if not exists email text;
+
+-- Seller details as they were when the invoice was issued, so editing your details in
+-- Settings never rewrites an invoice already sent. UPI ID stays live: pay the current one.
+alter table invoice add column if not exists seller_name text;
+alter table invoice add column if not exists seller_state text;
+alter table invoice add column if not exists seller_gstin text;
+update invoice i set seller_name = w.name, seller_state = w.state, seller_gstin = w.gstin
+  from workspace w where w.id = i.workspace_id and i.seller_name is null;

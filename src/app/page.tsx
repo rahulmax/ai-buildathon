@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ChevronRight, FileText, Receipt } from 'lucide-react'
+import { ChevronRight, FileText, Receipt, Settings } from 'lucide-react'
 import { Capture } from '@/components/capture'
 import { Landing } from '@/components/landing'
 import { Mark } from '@/components/mark'
@@ -32,6 +32,13 @@ export default async function Home() {
           <p className="truncate font-semibold">{ws.name}</p>
           <p className="text-xs text-muted-foreground">{formatDate(todayIST())}</p>
         </div>
+        <Link
+          href="/settings"
+          aria-label="Your details"
+          className="ml-auto flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Settings className="size-5" />
+        </Link>
       </header>
 
       <div className="rise">

@@ -24,7 +24,7 @@ async function load(slug: string) {
   const [inv] = await sql<Invoice[]>`
     select i.id, i.workspace_id, i.number, i.issue_date, i.due_date, i.place_of_supply, i.subtotal,
       i.cgst, i.sgst, i.igst, i.total, i.status,
-      w.name as seller_name, w.state as seller_state, w.gstin as seller_gstin, w.upi_id,
+      i.seller_name, i.seller_state, i.seller_gstin, w.upi_id,
       c.name as customer_name, c.phone as customer_phone, c.gstin as customer_gstin,
       to_char(i.cancelled_at at time zone 'Asia/Kolkata', 'YYYY-MM-DD') as cancelled_on,
       exists (select 1 from payment p where p.invoice_id = i.id) as has_payment
