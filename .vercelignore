@@ -1,3 +1,8 @@
+node_modules
+.next
+.env*
+!.env.example
+*.tsbuildinfo
 .agents
 .claude
 AGENTS.md
