@@ -1,0 +1,6 @@
+.agents
+.claude
+AGENTS.md
+skills-lock.json
+*.md
+!README.md
