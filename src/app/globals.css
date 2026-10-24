@@ -392,6 +392,54 @@
   .kicker {
     @apply text-xs font-semibold tracking-[0.08em] text-ink-muted uppercase;
   }
+  /* Landing atmosphere: a full-bleed wash behind a section, drawn from the
+     colour ramps so it follows dark mode. The page wrapper clips the bleed. */
+  .wash {
+    @apply relative isolate;
+  }
+  .wash::before,
+  .wash::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    top: -6rem;
+    bottom: -6rem;
+    left: 50%;
+    width: 100vw;
+    translate: -50% 0;
+    pointer-events: none;
+  }
+  .wash-hero::before {
+    top: -16rem;
+    background:
+      radial-gradient(ellipse 38% 55% at 76% 42%, rgb(var(--brand-400) / 0.5), transparent 70%),
+      radial-gradient(ellipse 34% 45% at 14% 28%, rgb(var(--warn-300) / 0.6), transparent 70%),
+      radial-gradient(ellipse 30% 35% at 48% 88%, rgb(var(--ok-300) / 0.4), transparent 70%);
+    mask-image: linear-gradient(to bottom, black 75%, transparent);
+  }
+  /* A faint dot grid that fades out from the middle of the hero. */
+  .wash-hero::after {
+    top: -16rem;
+    background-image: radial-gradient(rgb(var(--ink) / 0.09) 1px, transparent 1.5px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(ellipse 55% 50% at 50% 50%, black, transparent 75%);
+  }
+  .wash-band::before {
+    background:
+      radial-gradient(ellipse 32% 45% at 28% 50%, rgb(var(--brand-400) / 0.4), transparent 70%),
+      linear-gradient(to bottom, transparent, rgb(var(--brand-200) / 0.7) 22%, rgb(var(--brand-200) / 0.7) 78%, transparent);
+  }
+  .wash-lang::before {
+    background:
+      radial-gradient(ellipse 22% 60% at 40% 50%, rgb(var(--warn-300) / 0.5), transparent 70%),
+      radial-gradient(ellipse 22% 60% at 60% 50%, rgb(var(--ok-300) / 0.45), transparent 70%);
+  }
+  .wash-books::before {
+    background: radial-gradient(ellipse 34% 50% at 26% 50%, rgb(var(--warn-300) / 0.55), transparent 70%);
+  }
+  .wash-cta::before {
+    background: radial-gradient(ellipse 45% 55% at 50% 60%, rgb(var(--brand-400) / 0.45), transparent 70%);
+  }
 }
 
 /* Motion: arriving decelerates, leaving accelerates, ambient is gentle. */

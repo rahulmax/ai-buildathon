@@ -103,149 +103,155 @@ export async function Landing() {
   // A real, scannable QR for the demo invoice in the How it works phone.
   const qr = await qrSvg(upiLink({ upiId: 'riya.design@okaxis', payee: 'Riya Design Studio', amount: 47_200_00, note: 'INV-2627-0007' }))
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-24 px-4 pt-5 pb-10 md:gap-32 md:px-8">
-      <header className="rise flex items-center justify-between">
-        <span className="flex items-center gap-2.5 text-xl font-semibold">
-          <Mark />
-          Hisab
-        </span>
-        <Link href="/start" className={buttonVariants({ variant: 'ghost' })}>
-          Start
-        </Link>
-      </header>
+    <div className="flex flex-1 flex-col overflow-clip">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-24 px-4 pt-5 pb-10 md:gap-32 md:px-8">
+        <header className="rise relative z-10 flex items-center justify-between">
+          <span className="flex items-center gap-2.5 text-xl font-semibold">
+            <Mark />
+            Hisab
+          </span>
+          <Link href="/start" className={buttonVariants({ variant: 'ghost' })}>
+            Start
+          </Link>
+        </header>
 
-      <section className="stagger grid items-center gap-12 md:grid-cols-[1.1fr_1fr] md:gap-16">
-        <div className="flex flex-col gap-6">
-          <p className="kicker rise">For freelancers and small sellers</p>
-          <h1 className="rise text-5xl leading-[1.02] font-semibold md:text-7xl">Say it, get&nbsp;paid.</h1>
-          <p className="rise max-w-lg text-lg leading-relaxed text-muted-foreground">
-            Say an invoice out loud. Get a GST invoice with a UPI QR, and a reminder ready to send on WhatsApp.
-          </p>
-          <div className="rise flex flex-col items-start gap-3">
-            <Start />
-            <p className="text-sm text-ink-muted">No sign-up. Your first invoice takes a minute.</p>
-            {emailEnabled() && (
-              <Link href="/signin" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
-                Have books already? Sign in
-              </Link>
-            )}
+        <section className="wash wash-hero stagger grid items-center gap-12 md:grid-cols-[1.1fr_1fr] md:gap-16">
+          <div className="flex flex-col gap-6">
+            <p className="kicker rise">For freelancers and small sellers</p>
+            <h1 className="rise text-5xl leading-[1.02] font-semibold md:text-7xl">Say it, get&nbsp;paid.</h1>
+            <p className="rise max-w-lg text-lg leading-relaxed text-muted-foreground">
+              Say an invoice out loud. Get a GST invoice with a UPI QR, and a reminder ready to send on WhatsApp.
+            </p>
+            <div className="rise flex flex-col items-start gap-3">
+              <Start />
+              <p className="text-sm text-ink-muted">No sign-up. Your first invoice takes a minute.</p>
+              {emailEnabled() && (
+                <Link href="/signin" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+                  Have books already? Sign in
+                </Link>
+              )}
+            </div>
           </div>
+          <div className="rise relative pb-16 md:pb-0">
+            <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-muted shadow-card">
+              <Image
+                src="/landing/hero-speak.jpg"
+                alt="A freelancer at her desk saying an invoice into her phone"
+                fill
+                loading="eager"
+                fetchPriority="high"
+                sizes="(min-width: 768px) 45vw, 100vw"
+                className="object-cover"
+              />
+            </div>
+            <div className="absolute right-4 bottom-0 left-4 flex justify-start md:right-auto md:-bottom-10 md:-left-12">
+              <SpokenInvoice />
+            </div>
+          </div>
+        </section>
+
+        <div className="wash wash-band">
+          <HowItWorks qr={qr} />
         </div>
-        <div className="rise relative pb-16 md:pb-0">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-muted shadow-card">
+
+        <section className="wash wash-lang rise flex flex-col items-center gap-5 text-center">
+          <h2 className="text-2xl font-semibold md:text-3xl">Bill in the language you think in.</h2>
+          <ul className="flex flex-wrap justify-center gap-2">
+            {LANGUAGES.map((l) => (
+              <li key={l.lang} lang={l.lang} className="rounded-full border border-line bg-surface px-4 py-2 text-lg">
+                {l.label}
+              </li>
+            ))}
+          </ul>
+          <p className="max-w-md text-muted-foreground">
+            Rupee amounts, customer names and GST rates come through in all four. Every field is yours to check before
+            anything is saved.
+          </p>
+        </section>
+
+        <section className="flex flex-col gap-8">
+          <div className="flex flex-col gap-2">
+            <p className="kicker">Two ways in</p>
+            <h2 className="text-3xl font-semibold md:text-4xl">Money in, money out.</h2>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Way
+              src="/landing/say.jpg"
+              alt="A developer saying an invoice into his phone by a window"
+              icon={<Mic className="size-3.5" />}
+              kicker="Money in"
+              title="Say an invoice."
+            >
+              Customer, lines, GST rate and due date, filled in from what you said. Fix anything, then send it. Each
+              invoice gets its own link with a UPI QR.
+            </Way>
+            <Way
+              src="/landing/snap.jpg"
+              alt="A shopkeeper photographing a paper bill on his counter"
+              icon={<Camera className="size-3.5" />}
+              kicker="Money out"
+              title="Snap a bill."
+            >
+              Photograph any bill or receipt. The seller, their GSTIN, the amount and the GST you paid are logged as an
+              expense. We keep the numbers, not the photo.
+            </Way>
+          </div>
+        </section>
+
+        <section className="wash wash-books grid items-center gap-10 md:grid-cols-2 md:gap-16">
+          <div className="relative aspect-[3/2] overflow-hidden rounded-3xl bg-muted shadow-card">
             <Image
-              src="/landing/hero-speak.jpg"
-              alt="A freelancer at her desk saying an invoice into her phone"
+              src="/landing/books.jpg"
+              alt="Receipts, a green ledger and a coffee, neatly on a desk"
               fill
-              loading="eager"
-              fetchPriority="high"
-              sizes="(min-width: 768px) 45vw, 100vw"
+              sizes="(min-width: 768px) 50vw, 100vw"
               className="object-cover"
             />
           </div>
-          <div className="absolute right-4 bottom-0 left-4 flex justify-start md:right-auto md:-bottom-10 md:-left-12">
-            <SpokenInvoice />
+          <div className="flex flex-col gap-5">
+            <p className="kicker">The books</p>
+            <h2 className="text-3xl font-semibold md:text-4xl">Your books keep themselves.</h2>
+            <p className="leading-relaxed text-muted-foreground">
+              Every invoice and bill is recorded in double-entry books underneath. You only see two things.
+            </p>
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <div className="card flex flex-col gap-1 p-4">
+                <dt className="kicker">Who owes me</dt>
+                <dd className="text-sm text-muted-foreground">Open invoices, oldest first, with the total on top.</dd>
+              </div>
+              <div className="card flex flex-col gap-1 p-4">
+                <dt className="kicker">GST this month</dt>
+                <dd className="text-sm text-muted-foreground">
+                  GST you collected, minus GST you paid. Split into CGST, SGST and IGST.
+                </dd>
+              </div>
+            </dl>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <HowItWorks qr={qr} />
-
-      <section className="rise flex flex-col items-center gap-5 text-center">
-        <h2 className="text-2xl font-semibold md:text-3xl">Bill in the language you think in.</h2>
-        <ul className="flex flex-wrap justify-center gap-2">
-          {LANGUAGES.map((l) => (
-            <li key={l.lang} lang={l.lang} className="rounded-full border border-line bg-surface px-4 py-2 text-lg">
-              {l.label}
-            </li>
-          ))}
-        </ul>
-        <p className="max-w-md text-muted-foreground">
-          Rupee amounts, customer names and GST rates come through in all four. Every field is yours to check before
-          anything is saved.
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-8">
-        <div className="flex flex-col gap-2">
-          <p className="kicker">Two ways in</p>
-          <h2 className="text-3xl font-semibold md:text-4xl">Money in, money out.</h2>
-        </div>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Way
-            src="/landing/say.jpg"
-            alt="A developer saying an invoice into his phone by a window"
-            icon={<Mic className="size-3.5" />}
-            kicker="Money in"
-            title="Say an invoice."
-          >
-            Customer, lines, GST rate and due date, filled in from what you said. Fix anything, then send it. Each
-            invoice gets its own link with a UPI QR.
-          </Way>
-          <Way
-            src="/landing/snap.jpg"
-            alt="A shopkeeper photographing a paper bill on his counter"
-            icon={<Camera className="size-3.5" />}
-            kicker="Money out"
-            title="Snap a bill."
-          >
-            Photograph any bill or receipt. The seller, their GSTIN, the amount and the GST you paid are logged as an
-            expense. We keep the numbers, not the photo.
-          </Way>
-        </div>
-      </section>
-
-      <section className="grid items-center gap-10 md:grid-cols-2 md:gap-16">
-        <div className="relative aspect-[3/2] overflow-hidden rounded-3xl bg-muted shadow-card">
-          <Image
-            src="/landing/books.jpg"
-            alt="Receipts, a green ledger and a coffee, neatly on a desk"
-            fill
-            sizes="(min-width: 768px) 50vw, 100vw"
-            className="object-cover"
-          />
-        </div>
-        <div className="flex flex-col gap-5">
-          <p className="kicker">The books</p>
-          <h2 className="text-3xl font-semibold md:text-4xl">Your books keep themselves.</h2>
-          <p className="leading-relaxed text-muted-foreground">
-            Every invoice and bill is recorded in double-entry books underneath. You only see two things.
-          </p>
-          <dl className="grid gap-3 sm:grid-cols-2">
-            <div className="card flex flex-col gap-1 p-4">
-              <dt className="kicker">Who owes me</dt>
-              <dd className="text-sm text-muted-foreground">Open invoices, oldest first, with the total on top.</dd>
+        <div className="wash wash-cta">
+          <section className="relative overflow-hidden rounded-3xl border border-line bg-surface md:min-h-[26rem]">
+            <div className="relative aspect-[3/2] md:absolute md:inset-0 md:aspect-auto">
+              <Image src="/landing/wall.jpg" alt="" fill sizes="100vw" className="object-cover object-left" />
             </div>
-            <div className="card flex flex-col gap-1 p-4">
-              <dt className="kicker">GST this month</dt>
-              <dd className="text-sm text-muted-foreground">
-                GST you collected, minus GST you paid. Split into CGST, SGST and IGST.
-              </dd>
+            <div className="relative flex flex-col items-start gap-4 p-6 md:absolute md:top-1/2 md:right-12 md:max-w-sm md:-translate-y-1/2 md:rounded-2xl md:bg-surface md:p-8 md:shadow-card">
+              <h2 className="text-3xl font-semibold">Send your first invoice today.</h2>
+              <p className="leading-relaxed text-muted-foreground">
+                Open it on your phone, say who to bill, and share the link. That&rsquo;s the whole setup.
+              </p>
+              <Start />
             </div>
-          </dl>
+          </section>
         </div>
-      </section>
 
-      <section className="relative overflow-hidden rounded-3xl border border-line bg-surface md:min-h-[26rem]">
-        <div className="relative aspect-[3/2] md:absolute md:inset-0 md:aspect-auto">
-          <Image src="/landing/wall.jpg" alt="" fill sizes="100vw" className="object-cover object-left" />
-        </div>
-        <div className="relative flex flex-col items-start gap-4 p-6 md:absolute md:top-1/2 md:right-12 md:max-w-sm md:-translate-y-1/2 md:rounded-2xl md:bg-surface md:p-8 md:shadow-card">
-          <h2 className="text-3xl font-semibold">Send your first invoice today.</h2>
-          <p className="leading-relaxed text-muted-foreground">
-            Open it on your phone, say who to bill, and share the link. That&rsquo;s the whole setup.
-          </p>
-          <Start />
-        </div>
-      </section>
-
-      <footer className="flex flex-col items-start justify-between gap-3 border-t border-line pt-6 text-sm text-ink-muted sm:flex-row sm:items-center">
-        <span className="flex items-center gap-2">
-          <Mark size="sm" />
-          Hisab
-        </span>
-        <span>Made in Bengaluru at AI Builder&rsquo;s Day &rsquo;26.</span>
-      </footer>
-    </main>
+        <footer className="flex flex-col items-start justify-between gap-3 border-t border-line pt-6 text-sm text-ink-muted sm:flex-row sm:items-center">
+          <span className="flex items-center gap-2">
+            <Mark size="sm" />
+            Hisab
+          </span>
+          <span>Made in Bengaluru at AI Builder&rsquo;s Day &rsquo;26.</span>
+        </footer>
+      </main>
+    </div>
   )
 }
