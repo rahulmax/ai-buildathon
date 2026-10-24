@@ -4,6 +4,7 @@ export type Account =
   | 'receivable' | 'revenue' | 'bank' | 'expenses'
   | 'cgst_payable' | 'sgst_payable' | 'igst_payable'
   | 'cgst_input' | 'sgst_input' | 'igst_input'
+  | 'pine_labs_clearing' | 'tds_receivable' | 'owner_contribution'
 
 export type Line = {
   account: Account
@@ -12,11 +13,13 @@ export type Line = {
   customerId?: string | null
 }
 
+export type SourceType = 'invoice' | 'payment' | 'bill' | 'reversal' | 'settlement'
+
 type Entry = {
   workspaceId: string
   date: string
   memo: string
-  sourceType: 'invoice' | 'payment' | 'bill'
+  sourceType: SourceType
   sourceId: string
   lines: Line[]
 }

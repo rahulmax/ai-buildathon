@@ -5,6 +5,7 @@ import { z } from 'zod'
 export const InvoiceExtract = z.object({
   customer_name: z.string().nullable(),
   customer_state: z.string().nullable(),
+  customer_gstin: z.string().nullable(),
   lines: z.array(
     z.object({
       description: z.string(),
@@ -62,6 +63,9 @@ export const InvoiceForm = z.object({
   customer_name: z.string().trim().min(1, 'Who is this invoice for?'),
   customer_state: z.string().min(1),
   customer_phone: z.string().trim().optional(),
+  customer_gstin: z.string().trim().toUpperCase().optional().or(z.literal('')),
+  // Set when the owner confirmed "Same as <name>?" on the form.
+  customer_id: z.string().uuid().optional(),
   issue_date: z.string().date(),
   due_date: z.string().date().optional().or(z.literal('')),
   lines: z
@@ -86,10 +90,11 @@ export const BillForm = z.object({
   seller_state: z.string().optional(),
   bill_date: z.string().date(),
   category: z.enum(BILL_CATEGORIES),
+  paid_from: z.enum(['bank', 'personal']).default('bank'),
   subtotal: z.number().int().nonnegative(),
   cgst: z.number().int().nonnegative(),
   sgst: z.number().int().nonnegative(),
   igst: z.number().int().nonnegative(),
   total: z.number().int().positive(),
 })
-export type BillForm = z.infer<typeof BillForm>
+export type BillForm = z.input<typeof BillForm>
