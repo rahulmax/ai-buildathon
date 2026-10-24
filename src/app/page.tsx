@@ -60,6 +60,7 @@ export default async function Home() {
           <ChevronRight className="size-4 text-ink-muted" />
         </Link>
       </section>
+      <Link href="/invoices" className="rise card lift flex items-center justify-between gap-3 px-4 py-3 font-medium">All invoices<ChevronRight className="size-4 text-ink-muted" /></Link>
 
       {recent.length > 0 && (
         <section className="rise flex flex-col gap-2">
