@@ -4,15 +4,16 @@ import { Capture } from '@/components/capture'
 import { gstForMonth, recentActivity, whoOwesMe } from '@/lib/books'
 import { formatDate, todayIST } from '@/lib/dates'
 import { formatINR } from '@/lib/money'
-import { requireWorkspace } from '@/lib/workspace'
+import { requireWorkspace, workspaceServices } from '@/lib/workspace'
 
 export default async function Home() {
   const ws = await requireWorkspace()
   const month = todayIST().slice(0, 7)
-  const [owed, gst, recent] = await Promise.all([
+  const [owed, gst, recent, services] = await Promise.all([
     whoOwesMe(ws.id),
     gstForMonth(ws.id, month),
     recentActivity(ws.id),
+    workspaceServices(ws.id),
   ])
 
   return (
@@ -21,7 +22,7 @@ export default async function Home() {
         <p className="font-medium">{ws.name}</p>
       </header>
 
-      <Capture supplierState={ws.state} />
+      <Capture supplierState={ws.state} services={services} />
 
       <section className="grid grid-cols-2 gap-3">
         <Link href="/owed" className="flex flex-col gap-1 rounded-2xl border p-4 hover:bg-muted/50">

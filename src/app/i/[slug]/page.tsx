@@ -27,8 +27,11 @@ async function load(slug: string) {
     from invoice i join workspace w on w.id = i.workspace_id join customer c on c.id = i.customer_id
     where i.public_slug = ${slug}`
   if (!inv) return null
-  const lines = await sql<{ description: string; quantity: number; rate: number; amount: number; gst_rate: number }[]>`
-    select description, quantity, rate, amount, gst_rate from invoice_line where invoice_id = ${inv.id}`
+  const lines = await sql<{
+    description: string; sac_hsn: string | null; quantity: number; rate: number; amount: number; gst_rate: number
+  }[]>`
+    select description, sac_hsn, quantity, rate, amount, gst_rate from invoice_line
+    where invoice_id = ${inv.id}`
   return { inv, lines }
 }
 
@@ -118,6 +121,11 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
               <tr key={i} className="border-b last:border-0">
                 <td className="py-3">
                   <span className="block">{l.description}</span>
+                  {l.sac_hsn && (
+                    <span className="block text-xs text-muted-foreground">
+                      {l.sac_hsn.length === 6 && l.sac_hsn.startsWith('99') ? 'SAC' : 'HSN'} {l.sac_hsn}
+                    </span>
+                  )}
                   {l.quantity !== 1 && (
                     <span className="amount text-xs text-muted-foreground">
                       {l.quantity} × {formatINR(l.rate)}

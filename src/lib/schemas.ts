@@ -10,6 +10,7 @@ export const InvoiceExtract = z.object({
       description: z.string(),
       quantity: z.number(),
       rate_rupees: z.number().nullable(),
+      service_number: z.number().int().nullable(),
     }),
   ),
   gst_rate: z.number().nullable(),
@@ -44,7 +45,18 @@ export const DetailsForm = z.object({
     .string()
     .trim()
     .regex(/^[\w.-]+@[\w.-]+$/, 'A UPI ID looks like name@bank'),
+  services: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1),
+        kind: z.enum(['service', 'goods']),
+        code: z.string().nullable(),
+        code_description: z.string().nullable(),
+      }),
+    )
+    .min(1, 'Add at least one thing you sell'),
 })
+export type Service = z.infer<typeof DetailsForm>['services'][number]
 
 export const InvoiceForm = z.object({
   customer_name: z.string().trim().min(1, 'Who is this invoice for?'),
@@ -59,6 +71,7 @@ export const InvoiceForm = z.object({
         quantity: z.number().positive(),
         rate: z.number().int().positive(),
         gst_rate: z.number().min(0).max(28),
+        sac_hsn: z.string().nullable().optional(),
       }),
     )
     .min(1),

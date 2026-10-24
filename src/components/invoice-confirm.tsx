@@ -12,8 +12,9 @@ import { addDays, todayIST } from '@/lib/dates'
 import { GST_RATES, STATES, totals } from '@/lib/gst'
 import { formatINR, toPaise } from '@/lib/money'
 import type { InvoiceExtract } from '@/lib/schemas'
+import type { WorkspaceService } from '@/lib/workspace'
 
-type Line = { description: string; quantity: string; rate: string }
+type Line = { description: string; quantity: string; rate: string; code: string }
 
 const matchState = (s: string | null) =>
   s ? STATES.find((x) => x.toLowerCase() === s.trim().toLowerCase()) ?? null : null
@@ -23,18 +24,24 @@ export function InvoiceConfirm({
   transcript,
   language,
   supplierState,
+  services,
   onCancel,
 }: {
   extract: InvoiceExtract | null
   transcript: string
   language: string | null
   supplierState: string
+  services: WorkspaceService[]
   onCancel: () => void
 }) {
   const router = useRouter()
   const [pending, start] = useTransition()
   const today = todayIST()
   const spokenState = matchState(extract?.customer_state ?? null)
+  const coded = services.filter((s) => s.code)
+  // One service: every line is that service. Otherwise use the line Claude matched.
+  const defaultCode = (n: number | null) =>
+    (n != null ? services[n - 1]?.code : null) ?? (coded.length === 1 ? coded[0].code! : '')
 
   const [customer, setCustomer] = useState(extract?.customer_name ?? '')
   const [state, setState] = useState<string>(spokenState ?? supplierState)
@@ -49,8 +56,9 @@ export function InvoiceConfirm({
           description: l.description,
           quantity: String(l.quantity || 1),
           rate: l.rate_rupees != null ? String(l.rate_rupees) : '',
+          code: defaultCode(l.service_number),
         }))
-      : [{ description: '', quantity: '1', rate: '' }],
+      : [{ description: '', quantity: '1', rate: '', code: defaultCode(null) }],
   )
 
   const parsed = lines.map((l) => ({
@@ -75,7 +83,13 @@ export function InvoiceConfirm({
           customer_phone: phone.trim() || undefined,
           issue_date: today,
           due_date: due || '',
-          lines: parsed.map((l) => ({ description: l.description, quantity: l.quantity, rate: l.rate, gst_rate: l.gstRate })),
+          lines: parsed.map((l, i) => ({
+            description: l.description,
+            quantity: l.quantity,
+            rate: l.rate,
+            gst_rate: l.gstRate,
+            sac_hsn: lines[i].code || null,
+          })),
           language: language ?? undefined,
           transcript,
         })
@@ -128,13 +142,28 @@ export function InvoiceConfirm({
               />
             </div>
           </div>
+          {coded.length > 0 && (
+            <select
+              aria-label="SAC or HSN code"
+              value={l.code}
+              onChange={(e) => setLine(i, { code: e.target.value })}
+              className="field text-sm"
+            >
+              <option value="">No SAC/HSN code</option>
+              {coded.map((s) => (
+                <option key={s.name} value={s.code!}>
+                  {s.kind === 'service' ? 'SAC' : 'HSN'} {s.code} · {s.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       ))}
       <Button
         variant="ghost"
         size="sm"
         className="self-start"
-        onClick={() => setLines((ls) => [...ls, { description: '', quantity: '1', rate: '' }])}
+        onClick={() => setLines((ls) => [...ls, { description: '', quantity: '1', rate: '', code: defaultCode(null) }])}
       >
         <Plus /> Add an item
       </Button>

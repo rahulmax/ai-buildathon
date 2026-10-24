@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { InvoiceConfirm } from '@/components/invoice-confirm'
 import { BillConfirm } from '@/components/bill-confirm'
 import type { BillExtract, InvoiceExtract } from '@/lib/schemas'
+import type { WorkspaceService } from '@/lib/workspace'
 
 type Stage =
   | { kind: 'idle' }
@@ -31,7 +32,7 @@ async function shrink(file: File): Promise<Blob> {
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b ?? file), 'image/jpeg', 0.85))
 }
 
-export function Capture({ supplierState }: { supplierState: string }) {
+export function Capture({ supplierState, services }: { supplierState: string; services: WorkspaceService[] }) {
   const [stage, setStage] = useState<Stage>({ kind: 'idle' })
   const [typed, setTyped] = useState('')
   const recorder = useRef<MediaRecorder | null>(null)
@@ -101,6 +102,7 @@ export function Capture({ supplierState }: { supplierState: string }) {
         transcript={stage.transcript}
         language={stage.language}
         supplierState={supplierState}
+        services={services}
         onCancel={reset}
       />
     )

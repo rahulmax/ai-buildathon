@@ -24,6 +24,14 @@ export async function currentWorkspace(): Promise<Workspace | null> {
   return ws ?? null
 }
 
+export type WorkspaceService = { name: string; kind: 'service' | 'goods'; code: string | null }
+
+export async function workspaceServices(workspaceId: string) {
+  const sql = await db()
+  return sql<WorkspaceService[]>`
+    select name, kind, code from workspace_service where workspace_id = ${workspaceId} order by created_at, name`
+}
+
 // No sign-up: the first visit fills in details, and the cookie is the account.
 export async function requireWorkspace() {
   const ws = await currentWorkspace()

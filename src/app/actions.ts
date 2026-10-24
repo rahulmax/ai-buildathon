@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 import { fyCode, isGstin, totals } from '@/lib/gst'
+import { checkGstin } from '@/lib/gstin'
 import { postEntry } from '@/lib/ledger'
 import { BillForm, DetailsForm, InvoiceForm } from '@/lib/schemas'
 import { COOKIE, requireWorkspace } from '@/lib/workspace'
@@ -14,15 +15,32 @@ import { todayIST } from '@/lib/dates'
 export type ActionState = { error?: string } | undefined
 
 export async function saveDetails(_: ActionState, form: FormData): Promise<ActionState> {
-  const parsed = DetailsForm.safeParse(Object.fromEntries(form))
+  let services: unknown = []
+  try {
+    services = JSON.parse(String(form.get('services') ?? '[]'))
+  } catch {}
+  const parsed = DetailsForm.safeParse({ ...Object.fromEntries(form), services })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
   const d = parsed.data
-  if (d.gstin && !isGstin(d.gstin)) return { error: 'That GSTIN doesn’t look right. Leave it empty if you don’t have one.' }
+  let gstin: string | null = null
+  if (d.gstin) {
+    const check = checkGstin(d.gstin, d.state)
+    if (!check.ok) return { error: check.error }
+    gstin = check.gstin
+  }
   const sql = await db()
-  const [ws] = await sql`
-    insert into workspace (name, state, gstin, upi_id)
-    values (${d.name}, ${d.state}, ${d.gstin || null}, ${d.upi_id})
-    returning id`
+  const ws = await sql.begin(async (tx) => {
+    const [ws] = await tx`
+      insert into workspace (name, state, gstin, upi_id)
+      values (${d.name}, ${d.state}, ${gstin}, ${d.upi_id})
+      returning id`
+    for (const s of d.services) {
+      await tx`
+        insert into workspace_service (workspace_id, name, kind, code, code_description)
+        values (${ws.id}, ${s.name}, ${s.kind}, ${s.code}, ${s.code_description})`
+    }
+    return ws
+  })
   ;(await cookies()).set(COOKIE, ws.id, {
     httpOnly: true,
     sameSite: 'lax',
@@ -74,10 +92,10 @@ export async function createInvoice(input: InvoiceForm) {
         ${t.subtotal}, ${t.cgst}, ${t.sgst}, ${t.igst}, ${t.total}, ${slug()}, ${f.language ?? null}, ${f.transcript ?? null})
       returning id, public_slug`
 
-    for (const l of t.lines) {
+    for (const [i, l] of t.lines.entries()) {
       await tx`
-        insert into invoice_line (invoice_id, description, quantity, rate, amount, gst_rate)
-        values (${inv.id}, ${l.description}, ${l.quantity}, ${l.rate}, ${l.amount}, ${l.gstRate})`
+        insert into invoice_line (invoice_id, description, sac_hsn, quantity, rate, amount, gst_rate)
+        values (${inv.id}, ${l.description}, ${f.lines[i].sac_hsn ?? null}, ${l.quantity}, ${l.rate}, ${l.amount}, ${l.gstRate})`
     }
 
     await postEntry(tx, {

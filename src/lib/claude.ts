@@ -1,7 +1,9 @@
 import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
+import { z } from 'zod'
 import { BillExtract, InvoiceExtract } from './schemas'
+import type { Code } from './hsn'
 
 const client = new Anthropic()
 const MODEL = 'claude-opus-5-5'
@@ -14,15 +16,19 @@ Rules:
 - Amounts are rupees. "40 thousand" = 40000, "1.5 lakh" = 150000, "2 crore" = 20000000. Kannada "saavira", Hindi/Malayalam "hazaar"/"aayiram" = thousand.
 - If one amount is said for the whole job, return one line with quantity 1.
 - "due in 7 days" → due_in_days 7. A named date → due_date as YYYY-MM-DD, assuming the next such date after today.
-- customer_state only if a state or city is said (map a city to its state, e.g. Bengaluru → Karnataka).`
+- customer_state only if a state or city is said (map a city to its state, e.g. Bengaluru → Karnataka).
+- service_number: the number of the seller's service that the line is for, from the list given. null if none fits.`
 
-export async function extractInvoice(transcript: string, today: string) {
+export async function extractInvoice(transcript: string, today: string, services: string[] = []) {
+  const list = services.length
+    ? `The seller's services:\n${services.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\n`
+    : ''
   const res = await client.messages.parse({
     model: MODEL,
     max_tokens: 4000,
     output_config: { effort: 'low', format: zodOutputFormat(InvoiceExtract) },
     system: INVOICE_PROMPT,
-    messages: [{ role: 'user', content: `Today is ${today}.\n\nSpoken invoice:\n${transcript}` }],
+    messages: [{ role: 'user', content: `Today is ${today}.\n\n${list}Spoken invoice:\n${transcript}` }],
   })
   if (!res.parsed_output) throw new Error(`Extract failed: ${res.stop_reason}`)
   return res.parsed_output
@@ -95,4 +101,44 @@ export async function draftReminder(o: {
   })
   const text = res.content.find((b) => b.type === 'text')
   return text?.type === 'text' ? text.text.trim() : null
+}
+
+const CodePick = z.object({
+  items: z.array(
+    z.object({
+      service: z.string(),
+      kind: z.enum(['service', 'goods']),
+      code: z.string().nullable(),
+      alternatives: z.array(z.string()),
+    }),
+  ),
+})
+
+// Match what someone sells to official SAC (services) or HSN (goods) codes.
+// The model may only pick codes from the lists we give it.
+export async function pickCodes(services: string[], sac: Code[], hsnShortlists: Record<string, Code[]>) {
+  const sacList = sac.map((c) => `${c.code} ${c.desc}`).join('\n')
+  const goods = services
+    .map((s) => `For "${s}" if it is goods:\n${(hsnShortlists[s] ?? []).map((c) => `${c.code} ${c.desc}`).join('\n') || '(no candidates)'}`)
+    .join('\n\n')
+  const res = await client.messages.parse({
+    model: MODEL,
+    max_tokens: 4000,
+    output_config: { effort: 'low', format: zodOutputFormat(CodePick) },
+    system: [
+      {
+        type: 'text',
+        text: `You pick GST codes for what an Indian freelancer or small business sells.
+For each item, decide if it's a service or goods. Services take a 6-digit SAC code from the SAC list. Goods take an HSN code from that item's candidate list.
+Pick the most specific code that fits. Give up to 2 alternatives. Use only codes that appear in the lists, exactly as written. If nothing fits, code is null.
+
+SAC list (official, GST portal):
+${sacList}`,
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
+    messages: [{ role: 'user', content: `Items:\n${services.map((s) => `- ${s}`).join('\n')}\n\nHSN candidates:\n${goods}` }],
+  })
+  if (!res.parsed_output) throw new Error(`Code pick failed: ${res.stop_reason}`)
+  return res.parsed_output.items
 }

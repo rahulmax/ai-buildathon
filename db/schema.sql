@@ -9,6 +9,17 @@ create table if not exists workspace (
   created_at timestamptz not null default now()
 );
 
+-- What the business sells, with its official SAC (services) or HSN (goods) code.
+create table if not exists workspace_service (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references workspace(id),
+  name text not null,
+  kind text not null check (kind in ('service', 'goods')),
+  code text,
+  code_description text,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists customer (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references workspace(id),

@@ -35,9 +35,7 @@ export function totals(lines: LineInput[], supplierState: string, placeOfSupply:
   return { lines: priced, subtotal, gst, ...split, total: subtotal + gst }
 }
 
-const GSTIN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/
-
-export const isGstin = (s: string) => GSTIN.test(s.trim().toUpperCase())
+export { isGstin } from './gstin'
 
 // Financial year runs April to March. Oct 2026 is FY 26-27, written 2627.
 export function fyCode(date = new Date()) {
