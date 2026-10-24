@@ -49,7 +49,7 @@
       "description": "Whether the workspace has a valid GSTIN. Without one: GST is 0, the document is a 'Bill of supply', GST this month is hidden (OQ-SH-2).",
       "set_by": "owner, in Your details",
       "default_if_unknown": "unregistered",
-      "build_status": "not-built"
+      "build_status": "built"
     },
     {
       "id": "scope-cut",
@@ -72,7 +72,7 @@
       "description": "A signed link sent to the workspace's saved email that sets the workspace cookie on a new device.",
       "set_by": "owner_saves_email",
       "default_if_unknown": "off",
-      "build_status": "not-built"
+      "build_status": "built"
     }
   ],
   "server_config": [
@@ -231,10 +231,10 @@
         "scope-cut"
       ],
       "cut_rank": 2,
-      "default_state": "enabled when AgenticOrg keys are set",
+      "default_state": "enabled when PINE_LABS_CLIENT_ID and PINE_LABS_CLIENT_SECRET are set",
       "degraded_ux": "No gateway keys → raw UPI QR to the owner's UPI ID and manual Mark as paid.",
-      "build_status": "partial",
-      "notes": "Decided 2026-10-24 (OQ-INV-1). Link creation exists via AgenticOrg; webhook and invoice-page link not built."
+      "build_status": "built",
+      "notes": "Decided 2026-10-24 (OQ-INV-1). Built 2026-10-24: Plural payment links created direct, a signed webhook (PINE_LABS_WEBHOOK_SECRET) posts to pine_labs_clearing, and a Settled action on Who owes me moves it to bank less the fee. Not yet checked against live Pine Labs: the create-link response shape and ORDER_SETTLED events."
     },
     {
       "id": "CAP-MARK-PAID",

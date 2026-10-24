@@ -145,7 +145,7 @@
             "trigger": "payment_confirmed_by_gateway",
             "guard": "Pine Labs webhook verified (signature) and amount matches the invoice",
             "ears": "WHEN Pine Labs confirms a payment against the invoice THE SYSTEM SHALL record it and mark the invoice paid.",
-            "build_status": "not-built",
+            "build_status": "built",
             "phase": "today"
           },
           {
@@ -153,7 +153,7 @@
             "to": "cancelled",
             "trigger": "owner_cancels_invoice",
             "guard": "invoice open and owned; no payment recorded",
-            "build_status": "not-built",
+            "build_status": "built",
             "ears": "WHEN the owner cancels an open invoice THE SYSTEM SHALL set it cancelled AND post a reversal entry mirroring its ledger entry, AND its public link SHALL show only 'This invoice was cancelled'."
           }
         ],
@@ -390,7 +390,7 @@
       "name": "customer_pays",
       "primary_actor": "customer",
       "phase": "today",
-      "build_status": "partial",
+      "build_status": "built",
       "trigger": "Customer opens the invoice link from WhatsApp",
       "preconditions": [
         "Invoice exists with a valid public slug"
@@ -488,7 +488,7 @@
       "name": "find_an_old_invoice",
       "primary_actor": "owner",
       "phase": "today",
-      "build_status": "not-built",
+      "build_status": "built",
       "trigger": "A client asks for an invoice from months ago",
       "preconditions": [],
       "steps": [
@@ -571,7 +571,7 @@
         "Customer"
       ],
       "writes": [],
-      "build_status": "not-built",
+      "build_status": "built",
       "notes": "All invoices newest first, paid or open, search by customer, tap to reshare (OQ-INV-6)."
     }
   ],
