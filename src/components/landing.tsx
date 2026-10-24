@@ -15,6 +15,14 @@ const LANGUAGES = [
   { label: 'മലയാളം', lang: 'ml' },
 ]
 
+// Same four steps, in the same words, as the pills in explainer.gif.
+const STEPS = [
+  { title: 'Say it', body: 'Tap the mic and say who it’s for, what it’s for and how much. In any of the four languages.' },
+  { title: 'Check it', body: 'The invoice fills itself in, GST split and all. Fix anything before it’s saved.' },
+  { title: 'Send it', body: 'It gets its own link with a UPI QR. One tap sends it to your customer on WhatsApp.' },
+  { title: 'Get paid', body: 'They pay by UPI, straight to your account. Mark it paid and your books update.' },
+]
+
 function Start({ className = '' }: { className?: string }) {
   return (
     <Link href="/start" className={buttonVariants({ size: 'lg', className: `shadow-lift ${className}` })}>
@@ -133,6 +141,38 @@ export function Landing() {
           <div className="absolute right-4 bottom-0 left-4 flex justify-start md:right-auto md:-bottom-10 md:-left-12">
             <SpokenInvoice />
           </div>
+        </div>
+      </section>
+
+      <section className="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+        <div className="flex flex-col gap-6 md:order-2">
+          <div className="flex flex-col gap-2">
+            <p className="kicker">How it works</p>
+            <h2 className="text-3xl font-semibold md:text-4xl">From one sentence to a paid invoice.</h2>
+          </div>
+          <ol className="flex flex-col gap-5">
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="flex gap-4">
+                <span className="amount flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700 dark:bg-brand-100">
+                  {i + 1}
+                </span>
+                <div className="flex flex-col gap-1">
+                  <h3 className="font-semibold">{s.title}</h3>
+                  <p className="leading-relaxed text-muted-foreground">{s.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="overflow-hidden rounded-3xl border border-line shadow-card md:order-1">
+          <Image
+            src="/landing/explainer.gif"
+            alt="Saying an invoice on a phone: it fills in, gets a UPI link, goes out on WhatsApp and gets marked paid"
+            width={800}
+            height={960}
+            unoptimized
+            className="h-auto w-full"
+          />
         </div>
       </section>
 
