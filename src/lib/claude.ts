@@ -18,6 +18,7 @@ Rules:
 - "due in 7 days" → due_in_days 7. A named date → due_date as YYYY-MM-DD, assuming the next such date after today.
 - customer_state only if a state or city is said (map a city to its state, e.g. Bengaluru → Karnataka).
 - customer_gstin only if the customer's GSTIN is said: 15 characters, letters uppercase, no spaces. Otherwise null. Never make one up.
+- customer_phone only if a phone or WhatsApp number is said. Digits only, no spaces. Numbers may be spoken digit by digit in any language: "double nine" = 99, "triple six" = 666. For an Indian mobile, return the 10 digits (drop +91 or a leading 0). If fewer digits were heard, return what was heard; the form will ask.
 - service_number: the number of the seller's service that the line is for, from the list given. null if none fits.`
 
 export async function extractInvoice(transcript: string, today: string, services: string[] = []) {

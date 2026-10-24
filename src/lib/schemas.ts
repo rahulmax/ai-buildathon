@@ -6,6 +6,7 @@ export const InvoiceExtract = z.object({
   customer_name: z.string().nullable(),
   customer_state: z.string().nullable(),
   customer_gstin: z.string().nullable(),
+  customer_phone: z.string().nullable(),
   lines: z.array(
     z.object({
       description: z.string(),
