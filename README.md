@@ -26,7 +26,7 @@ GST time.
 
 ## What we're building
 
-A voice invoice tool for freelancers and small sellers, in the **AI for Finance** track.
+**Hisab**: a voice invoice tool for freelancers and small sellers, in the **AI for Finance** track.
 
 Say: "Invoice Acme ₹40,000 for landing page design, 18% GST, due in 7 days."
 Get:

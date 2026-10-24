@@ -7,7 +7,7 @@ const sans = IBM_Plex_Sans({ variable: '--font-plex-sans', subsets: ['latin'], w
 const mono = IBM_Plex_Mono({ variable: '--font-plex-mono', subsets: ['latin'], weight: ['400', '500', '600'] })
 
 export const metadata: Metadata = {
-  title: 'Say it, get paid',
+  title: { default: 'Hisab', template: '%s · Hisab' },
   description: 'Say an invoice in your language. Snap a bill. Your books keep themselves.',
 }
 
