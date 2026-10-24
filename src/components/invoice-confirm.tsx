@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createInvoice } from '@/app/actions'
+import { DatePicker } from '@/components/date-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -189,7 +190,19 @@ export function InvoiceConfirm({
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="due">Due</Label>
-          <Input id="due" type="date" value={due} min={today} onChange={(e) => setDue(e.target.value)} />
+          <DatePicker
+            id="due"
+            value={due}
+            onChange={setDue}
+            min={today}
+            placeholder="No due date"
+            clearable
+            presets={[
+              { label: '7 days', days: 7 },
+              { label: '15 days', days: 15 },
+              { label: '30 days', days: 30 },
+            ]}
+          />
         </div>
       </div>
 
