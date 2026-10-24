@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { InvoiceConfirm } from '@/components/invoice-confirm'
 import { BillConfirm } from '@/components/bill-confirm'
-import type { BillExtract, InvoiceExtract } from '@/lib/schemas'
+import type { BillReading, InvoiceExtract } from '@/lib/schemas'
 import type { WorkspaceService } from '@/lib/workspace'
 
 type Stage =
@@ -17,7 +17,7 @@ type Stage =
   | { kind: 'typing' }
   | { kind: 'working'; label: string }
   | { kind: 'invoice'; extract: InvoiceExtract | null; transcript: string; language: string | null }
-  | { kind: 'bill'; extract: BillExtract | null }
+  | { kind: 'bill'; extract: BillReading | null }
 
 const pickMime = () =>
   ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((t) => MediaRecorder.isTypeSupported(t))

@@ -1,10 +1,14 @@
 import 'server-only'
+import { z } from 'zod'
+import { BillExtract } from './schemas'
 
 const BASE_URL = process.env.AGENTICORG_BASE_URL ?? 'https://agenticorg.hackathon.pinelabs.com'
 const API = `${BASE_URL}/api/v1`
 
 // "Say it get paid: Collections" in our AgenticOrg org.
 const COLLECTIONS_AGENT_ID = process.env.AGENTICORG_COLLECTIONS_AGENT_ID ?? 'c17ea5b6-f3de-4f23-91c0-2894d4311779'
+// "Say it get paid: Bill reader".
+const BILL_AGENT_ID = process.env.AGENTICORG_BILL_AGENT_ID ?? '943b6156-b70e-413d-a2f1-ad1ab05e4fa6'
 
 export const agenticOrgReady = () => Boolean(process.env.AGENTICORG_API_KEY)
 
@@ -19,12 +23,12 @@ type AgentRunResult = {
 }
 
 // Agents run by UUID. A type name like 'ar_collections' goes to a different endpoint and the key is rejected.
-async function runAgent(agentId: string, body: unknown): Promise<AgentRunResult> {
+async function runAgent(agentId: string, body: unknown, timeoutMs = 45_000): Promise<AgentRunResult> {
   const res = await fetch(`${API}/agents/${agentId}/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.AGENTICORG_API_KEY}` },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(45_000),
+    signal: AbortSignal.timeout(timeoutMs),
   })
   if (!res.ok) throw new Error(`AgenticOrg run failed: ${res.status} ${(await res.text()).slice(0, 200)}`)
   return (await res.json()) as AgentRunResult
@@ -117,4 +121,49 @@ export async function runCollectionsAgent(input: ChaseInput): Promise<ChaseResul
     trace: result.reasoning_trace ?? [],
     hitl: result.hitl_trigger ?? null,
   }
+}
+
+// What the Bill reader may send back. Every field optional: the route fills gaps from Claude.
+const AgentBill = BillExtract.partial().extend({ check: z.string().nullable().optional() })
+
+// The Bill reader: reads the fields off the bill's text and checks the GST adds up.
+// Returns null when the output isn't usable, so the caller keeps Claude's read.
+export async function runBillReader(text: string) {
+  const result = await runAgent(
+    BILL_AGENT_ID,
+    {
+      action: 'process',
+      inputs: {
+        task: 'read_purchase_bill',
+        bill_text: text,
+        steps: [
+          'Read the seller, their GSTIN, the bill date, the amounts and the GST from the bill text. Only what is printed; null if absent.',
+          'Amounts are rupees. subtotal is before tax; total is what was paid. bill_date as YYYY-MM-DD; Indian bills write dates day first.',
+          'category is one of travel, food, software, equipment, rent, other. Restaurants and cafés are food.',
+          'Check that the subtotal and GST add up to the total. Say so in one short, plain sentence. Do not judge the GSTIN; the app checks it.',
+          'Do not record, create or send anything. A human confirms the bill first.',
+        ],
+        output_format: {
+          seller_name: 'string|null',
+          seller_gstin: 'string|null',
+          seller_state: 'string|null',
+          bill_date: 'YYYY-MM-DD|null',
+          category: 'travel|food|software|equipment|rent|other|null',
+          subtotal_rupees: 'number|null',
+          cgst_rupees: 'number|null',
+          sgst_rupees: 'number|null',
+          igst_rupees: 'number|null',
+          total_rupees: 'number|null',
+          check: 'string|null',
+        },
+      },
+      context: { human_approval: 'required_before_save' },
+    },
+    20_000,
+  )
+  const parsed = AgentBill.safeParse(result.output)
+  // A run that failed, or came back as prose, has neither of these.
+  if (!parsed.success || (!parsed.data.seller_name && parsed.data.total_rupees == null)) return null
+  const { check, ...fields } = parsed.data
+  return { fields, check: check ?? null, runId: result.run_id ?? null, status: result.status }
 }

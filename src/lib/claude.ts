@@ -2,7 +2,7 @@ import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { z } from 'zod'
-import { BillExtract, InvoiceExtract } from './schemas'
+import { BillRead, InvoiceExtract } from './schemas'
 import type { Code } from './hsn'
 
 const client = new Anthropic()
@@ -44,16 +44,17 @@ Rules:
 - If the bill shows CGST and SGST, fill those; if IGST, fill that. If no GST is shown, return null for all three.
 - bill_date as YYYY-MM-DD. Indian bills write dates day first.
 - category is one of travel, food, software, equipment, rent, other. Restaurants and cafés are food.
-- seller_state from the seller's address or the first two digits of their GSTIN (29 = Karnataka, 32 = Kerala, 27 = Maharashtra, 07 = Delhi, 33 = Tamil Nadu, 36 = Telangana).`
+- seller_state from the seller's address or the first two digits of their GSTIN (29 = Karnataka, 32 = Kerala, 27 = Maharashtra, 07 = Delhi, 33 = Tamil Nadu, 36 = Telangana).
+- text: everything printed or written on the bill, line by line, as plain text. Keep every number as printed. null if nothing is readable.`
 
 type BillType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' | 'application/pdf'
 
-// A photo of a bill, or a PDF one (the kind that arrives by email).
+// A photo of a bill, or a PDF one (the kind that arrives by email). Fields, and the text for the agent.
 export async function readBill(base64: string, mediaType: BillType) {
   const res = await client.messages.parse({
     model: MODEL,
     max_tokens: 4000,
-    output_config: { effort: 'low', format: zodOutputFormat(BillExtract) },
+    output_config: { effort: 'low', format: zodOutputFormat(BillRead) },
     system: BILL_PROMPT,
     messages: [
       {

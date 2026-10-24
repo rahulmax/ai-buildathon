@@ -38,6 +38,13 @@ export const BillExtract = z.object({
 })
 export type BillExtract = z.infer<typeof BillExtract>
 
+// Claude's read also carries the bill's text, for the AgenticOrg Bill reader.
+export const BillRead = BillExtract.extend({ text: z.string().nullable() })
+export type BillRead = z.infer<typeof BillRead>
+
+// What the confirm form gets: the fields, who read them, and the agent's GST check.
+export type BillReading = BillExtract & { source: 'agenticorg' | 'claude'; check: string | null }
+
 // Forms, in paise, after the person has confirmed them.
 export const DetailsForm = z.object({
   name: z.string().trim().min(1, 'Your name or business name'),

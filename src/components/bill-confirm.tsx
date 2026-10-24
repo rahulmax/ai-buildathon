@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Landmark, type LucideIcon, Wallet } from 'lucide-react'
+import { Bot, Landmark, type LucideIcon, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { createBill } from '@/app/actions'
 import { DatePicker } from '@/components/date-picker'
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { addsUp, claimsGst, gstSplitNote } from '@/lib/bills'
 import { todayIST } from '@/lib/dates'
 import { formatINR, toPaise } from '@/lib/money'
-import { BILL_CATEGORIES, type BillExtract } from '@/lib/schemas'
+import { BILL_CATEGORIES, type BillReading } from '@/lib/schemas'
 
 const str = (n: number | null | undefined) => (n != null ? String(n) : '')
 const paise = (s: string) => toPaise(Number(s.replace(/,/g, '')) || 0)
@@ -29,7 +29,7 @@ export function BillConfirm({
   onCancel,
   onSaved,
 }: {
-  extract: BillExtract | null
+  extract: BillReading | null
   supplierState: string
   onCancel: () => void
   onSaved: () => void
@@ -97,7 +97,18 @@ export function BillConfirm({
 
   return (
     <div className="card rise flex flex-col gap-5 p-5">
-      <p className="kicker">Check your bill</p>
+      <div className="flex flex-col gap-1.5">
+        <p className="kicker">Check your bill</p>
+        {extract && (
+          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <Bot className="mt-px size-3.5 shrink-0" />
+            <span>
+              {extract.source === 'agenticorg' ? 'Bill reader agent on AgenticOrg' : 'Read by Claude'}
+              {extract.check && <> · {extract.check}</>}
+            </span>
+          </p>
+        )}
+      </div>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="seller">Seller</Label>
