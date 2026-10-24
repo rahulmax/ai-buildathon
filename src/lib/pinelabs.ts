@@ -232,7 +232,7 @@ export function parseEvent(body: unknown): PineEvent {
   const payment = obj(((d.payments ?? []) as unknown[])[0])
   const kind = /settled/i.test(type) && !/reject/i.test(type)
     ? 'settled'
-    : /processed/i.test(type) && !/refund/i.test(type)
+    : /processed/i.test(type) && !/refund|partial/i.test(type)
       ? 'paid'
       : 'other'
   return {
