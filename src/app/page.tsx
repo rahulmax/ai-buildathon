@@ -3,7 +3,7 @@ import { ChevronRight, FileText, Receipt } from 'lucide-react'
 import { Capture } from '@/components/capture'
 import { Landing } from '@/components/landing'
 import { Mark } from '@/components/mark'
-import { gstForMonth, recentActivity, whoOwesMe } from '@/lib/books'
+import { gstForMonth, profitForMonth, recentActivity, whoOwesMe } from '@/lib/books'
 import { formatDate, todayIST } from '@/lib/dates'
 import { formatINR } from '@/lib/money'
 import { currentWorkspace, workspaceServices } from '@/lib/workspace'
@@ -13,9 +13,10 @@ export default async function Home() {
   const ws = await currentWorkspace()
   if (!ws) return <Landing />
   const month = todayIST().slice(0, 7)
-  const [owed, gst, recent, services] = await Promise.all([
+  const [owed, gst, profit, recent, services] = await Promise.all([
     whoOwesMe(ws.id),
     gstForMonth(ws.id, month),
+    profitForMonth(ws.id, month),
     recentActivity(ws.id),
     workspaceServices(ws.id),
   ])
@@ -46,6 +47,17 @@ export default async function Home() {
           <span className="kicker">GST this month</span>
           <span className="amount text-2xl font-semibold">{formatINR(Math.max(gst.net, 0))}</span>
           <span className="text-xs text-muted-foreground">{gst.net < 0 ? 'Credit carried forward' : 'To pay'}</span>
+        </Link>
+        <Link href="/books" className="card lift col-span-2 flex items-center justify-between gap-3 p-4">
+          <span className="flex flex-col gap-1.5">
+            <span className="kicker">Profit this month</span>
+            <span className="amount text-2xl font-semibold">
+              {profit.profit < 0 && '− '}
+              {formatINR(Math.abs(profit.profit))}
+            </span>
+            <span className="text-xs text-muted-foreground">Sales less expenses · see your books</span>
+          </span>
+          <ChevronRight className="size-4 text-ink-muted" />
         </Link>
       </section>
 

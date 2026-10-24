@@ -72,3 +72,57 @@ export async function statsToday() {
       (select count(*)::int from chase where (created_at at time zone 'Asia/Kolkata')::date = (now() at time zone 'Asia/Kolkata')::date) as chases`
   return s
 }
+
+// Profit for one month, straight from the ledger: sales less expenses.
+// Expenses split by the category of the bill that posted them.
+export async function profitForMonth(workspaceId: string, month: string) {
+  const sql = await db()
+  const [totals] = await sql<{ revenue: number; expenses: number }[]>`
+    select
+      coalesce(sum(l.credit - l.debit) filter (where l.account = 'revenue'), 0)::bigint as revenue,
+      coalesce(sum(l.debit - l.credit) filter (where l.account = 'expenses'), 0)::bigint as expenses
+    from ledger_line l join ledger_entry e on e.id = l.entry_id
+    where e.workspace_id = ${workspaceId} and to_char(e.date, 'YYYY-MM') = ${month}`
+  const categories = await sql<{ category: string; amount: number; bills: number }[]>`
+    select b.category, sum(l.debit - l.credit)::bigint as amount, count(distinct b.id)::int as bills
+    from ledger_line l
+    join ledger_entry e on e.id = l.entry_id
+    join bill b on b.id = e.source_id and e.source_type = 'bill'
+    where e.workspace_id = ${workspaceId} and to_char(e.date, 'YYYY-MM') = ${month}
+      and l.account = 'expenses'
+    group by b.category
+    order by amount desc`
+  return { ...totals, profit: totals.revenue - totals.expenses, categories }
+}
+
+// Every account's balance since the start. Debits and credits total the same,
+// or the books are wrong.
+export async function accountBalances(workspaceId: string) {
+  const sql = await db()
+  return sql<{ account: string; debit: number; credit: number }[]>`
+    select l.account, sum(l.debit)::bigint as debit, sum(l.credit)::bigint as credit
+    from ledger_line l join ledger_entry e on e.id = l.entry_id
+    where e.workspace_id = ${workspaceId}
+    group by l.account`
+}
+
+export type JournalEntry = {
+  id: string
+  date: string
+  memo: string
+  source_type: string
+  lines: { account: string; debit: number; credit: number }[]
+}
+
+export async function journal(workspaceId: string, limit = 20) {
+  const sql = await db()
+  return sql<JournalEntry[]>`
+    select e.id, e.date, e.memo, e.source_type,
+      json_agg(json_build_object('account', l.account, 'debit', l.debit, 'credit', l.credit)
+        order by l.debit desc, l.credit desc) as lines
+    from ledger_entry e join ledger_line l on l.entry_id = e.id
+    where e.workspace_id = ${workspaceId}
+    group by e.id
+    order by e.date desc, e.created_at desc
+    limit ${limit}`
+}
