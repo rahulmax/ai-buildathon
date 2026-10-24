@@ -2,13 +2,13 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
-import { CheckCircle2 } from 'lucide-react'
+import { Suspense } from 'react'
 import { CancelInvoice } from '@/components/cancel-invoice'
+import { Pay, PaySkeleton } from '@/components/pay'
 import { Share } from '@/components/share'
 import { db } from '@/lib/db'
 import { formatDate } from '@/lib/dates'
 import { formatINR } from '@/lib/money'
-import { qrSvg, upiLink } from '@/lib/upi'
 import { currentWorkspace } from '@/lib/workspace'
 
 type Invoice = {
@@ -69,9 +69,6 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
   const taxInvoice = inv.cgst + inv.sgst + inv.igst > 0 || Boolean(inv.seller_gstin)
   const h = await headers()
   const url = `${h.get('x-forwarded-proto') ?? (h.get('host')?.startsWith('localhost') ? 'http' : 'https')}://${h.get('host')}/i/${slug}`
-  const paid = inv.status === 'paid'
-  const pay = upiLink({ upiId: inv.upi_id, payee: inv.seller_name, amount: inv.total, note: inv.number })
-  const qr = await qrSvg(pay)
   const rate = lines[0]?.gst_rate ?? 0
   const same = lines.every((l) => l.gst_rate === rate)
 
@@ -186,26 +183,9 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
           </div>
         </dl>
 
-        {paid ? (
-          <p className="flex items-center justify-center gap-2 rounded-xl bg-ok-50 py-4 font-semibold text-ok-700 dark:bg-ok-100">
-            <CheckCircle2 className="size-5" /> Paid. Thank you.
-          </p>
-        ) : (
-          <div className="flex flex-col items-center gap-4 rounded-xl border border-line bg-paper p-5">
-            <div className="size-48 rounded-xl bg-white p-3 shadow-card [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: qr }} />
-            <p className="text-center text-xs text-muted-foreground">
-              Scan with any UPI app, or tap below on your phone
-              <br />
-              <span className="font-mono">{inv.upi_id}</span>
-            </p>
-            <a
-              href={pay}
-              className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-primary text-base font-semibold text-primary-foreground shadow-lift transition-colors duration-state ease-ambient hover:bg-brand-800"
-            >
-              Pay {formatINR(inv.total)} by UPI
-            </a>
-          </div>
-        )}
+        <Suspense fallback={<PaySkeleton />}>
+          <Pay invoiceId={inv.id} url={url} />
+        </Suspense>
       </article>
     </main>
   )

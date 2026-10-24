@@ -6,11 +6,12 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { claimsGst, findDuplicateBill } from '@/lib/bills'
 import { db } from '@/lib/db'
-import { canChargeGst, fyCode, isGstin, totals } from '@/lib/gst'
+import { canChargeGst, fyCode, totals } from '@/lib/gst'
 import { checkGstin } from '@/lib/gstin'
 import { postEntry, type Account } from '@/lib/ledger'
 import { phoneKey, type CustomerOption } from '@/lib/customers'
 import { workspaceCustomers } from '@/lib/invoices'
+import { cancelPayLink, settleAll, syncPayLink } from '@/lib/pinelabs'
 import { BillForm, DetailsForm, InvoiceForm } from '@/lib/schemas'
 import { COOKIE, requireWorkspace } from '@/lib/workspace'
 import { todayIST } from '@/lib/dates'
@@ -187,6 +188,10 @@ export async function createInvoice(input: InvoiceForm): Promise<{ slug: string 
 export async function cancelInvoice(invoiceId: string): Promise<{ error?: string }> {
   const ws = await requireWorkspace()
   const sql = await db()
+  // A Pine Labs payment the webhook missed would land first, and block the cancel below.
+  const [current] = await sql<{ id: string; status: string; pay_link: string | null }[]>`
+    select id, status, pay_link from invoice where id = ${invoiceId} and workspace_id = ${ws.id}`
+  if (current) await syncPayLink(current)
   const error = await sql.begin(async (tx) => {
     const [inv] = await tx`
       select id, number, status from invoice
@@ -214,34 +219,64 @@ export async function cancelInvoice(invoiceId: string): Promise<{ error?: string
     return null
   })
   if (error) return { error }
+  // The Pine Labs link stops working too, so nobody pays a cancelled invoice.
+  await cancelPayLink(invoiceId)
   revalidatePath('/', 'layout')
   return {}
 }
 
-export async function markPaid(invoiceId: string) {
+// TDS under 194J: 10% of the fee before GST (OQ-BKS-6).
+const tdsOn = (subtotal: number) => Math.round(subtotal * 0.1)
+
+// What each "Mark as paid" choice means in rupees, for the buttons.
+export async function paymentChoices(invoiceId: string) {
+  const ws = await requireWorkspace()
+  const sql = await db()
+  const [inv] = await sql<{ subtotal: number; total: number; status: string }[]>`
+    select subtotal, total, status from invoice where id = ${invoiceId} and workspace_id = ${ws.id}`
+  if (!inv || inv.status !== 'open') return null
+  const tds = tdsOn(inv.subtotal)
+  return { total: inv.total, tds, lessTds: inv.total - tds }
+}
+
+// Cash or a direct transfer. Paid less TDS: the client keeps 10% of the fee
+// and pays it to the government for us, so it's ours to claim back.
+// Paid and cancelled invoices are left alone.
+export async function markPaid(invoiceId: string, opts: { lessTds?: boolean } = {}) {
   const ws = await requireWorkspace()
   const sql = await db()
   await sql.begin(async (tx) => {
     const [inv] = await tx`
-      select id, number, customer_id, total, status from invoice
+      select id, number, customer_id, subtotal, total, status from invoice
       where id = ${invoiceId} and workspace_id = ${ws.id} for update`
-    if (!inv || inv.status === 'paid') return
+    if (!inv || inv.status !== 'open') return
+    const tds = opts.lessTds ? tdsOn(inv.subtotal) : 0
+    const cash = inv.total - tds
     const [pay] = await tx`
-      insert into payment (invoice_id, amount, method) values (${inv.id}, ${inv.total}, 'manual')
+      insert into payment (invoice_id, amount, tds, method) values (${inv.id}, ${cash}, ${tds}, 'manual')
       returning id`
     await tx`update invoice set status = 'paid' where id = ${inv.id}`
     await postEntry(tx, {
       workspaceId: ws.id,
       date: todayIST(),
-      memo: `Payment for ${inv.number}`,
+      memo: tds ? `Payment for ${inv.number}, less TDS` : `Payment for ${inv.number}`,
       sourceType: 'payment',
       sourceId: pay.id,
       lines: [
-        { account: 'bank', debit: inv.total },
+        { account: 'bank', debit: cash },
+        { account: 'tds_receivable', debit: tds },
         { account: 'receivable', credit: inv.total, customerId: inv.customer_id },
       ],
     })
   })
+  revalidatePath('/', 'layout')
+}
+
+// Pine Labs paid out. The owner says what reached the bank; the rest was the fee.
+export async function settlePineLabs(receivedPaise: number): Promise<ActionState> {
+  const ws = await requireWorkspace()
+  const result = await settleAll(ws.id, Math.round(Number(receivedPaise)))
+  if (result.error) return { error: result.error }
   revalidatePath('/', 'layout')
 }
 

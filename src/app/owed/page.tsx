@@ -1,15 +1,17 @@
 import Link from 'next/link'
 import { Back } from '@/components/back'
 import { Chase } from '@/components/chase'
+import { Settle } from '@/components/settle'
 import { Badge } from '@/components/ui/badge'
 import { whoOwesMe } from '@/lib/books'
 import { daysBetween, formatDate, todayIST } from '@/lib/dates'
 import { formatINR } from '@/lib/money'
+import { pendingSettlement } from '@/lib/pinelabs'
 import { requireWorkspace } from '@/lib/workspace'
 
 export default async function OwedPage() {
   const ws = await requireWorkspace()
-  const owed = await whoOwesMe(ws.id)
+  const [owed, settling] = await Promise.all([whoOwesMe(ws.id), pendingSettlement(ws.id)])
   const today = todayIST()
 
   return (
@@ -24,6 +26,8 @@ export default async function OwedPage() {
           </p>
         )}
       </div>
+
+      {settling.amount > 0 && <Settle waiting={settling.amount} payments={settling.payments} />}
 
       {owed.invoices.length === 0 && <p className="card rise p-6 text-center text-muted-foreground">Nobody owes you anything. Nice.</p>}
 
