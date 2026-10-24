@@ -4,21 +4,16 @@ import { Capture } from '@/components/capture'
 import { Landing } from '@/components/landing'
 import { SaveEmail } from '@/components/save-email'
 import { StartFresh } from '@/components/start-fresh'
-import { gstForMonth, profitForMonth, recentActivity, whoOwesMe } from '@/lib/books'
+import { recentActivity } from '@/lib/books'
 import { formatDate, todayIST } from '@/lib/dates'
 import { formatINR } from '@/lib/money'
-import { cn } from '@/lib/utils'
 import { currentWorkspace, workspaceServices } from '@/lib/workspace'
 
 export default async function Home() {
   // No workspace yet: show the landing page. Its button leads to /start.
   const ws = await currentWorkspace()
   if (!ws) return <Landing />
-  const month = todayIST().slice(0, 7)
-  const [owed, gst, profit, recent, services] = await Promise.all([
-    whoOwesMe(ws.id),
-    gstForMonth(ws.id, month),
-    profitForMonth(ws.id, month),
+  const [recent, services] = await Promise.all([
     recentActivity(ws.id),
     workspaceServices(ws.id),
   ])
@@ -44,39 +39,16 @@ export default async function Home() {
       </div>
       <SaveEmail ws={ws} />
 
-      <section className="rise grid grid-cols-2 gap-3">
-        <Link href="/owed" className="card lift flex flex-col gap-1.5 p-4">
-          <span className="kicker">Who owes me</span>
-          <span className="amount text-2xl font-semibold">{formatINR(owed.total)}</span>
-          <span className="text-xs text-muted-foreground">
-            {owed.invoices.length} open {owed.invoices.length === 1 ? 'invoice' : 'invoices'}
-          </span>
+      <nav className="rise card overflow-hidden">
+        <Link href="/invoices" className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 font-medium transition-colors hover:bg-muted">
+          All invoices
+          <ChevronRight className="size-4 text-ink-muted" />
         </Link>
-        {ws.gstin && (
-          <Link href="/gst" className="card lift flex flex-col gap-1.5 p-4">
-            <span className="kicker">GST this month</span>
-            <span className="amount text-2xl font-semibold">{formatINR(gst.credit > 0 ? gst.credit : gst.toPay)}</span>
-            <span className="text-xs text-muted-foreground">
-              {gst.credit > 0 ? 'Credit carried forward' : gst.carriedIn > 0 ? 'To pay, after earlier credit' : 'To pay'}
-            </span>
-          </Link>
-        )}
-        <Link
-          href="/books"
-          className={cn('card lift flex items-center justify-between gap-3 p-4', ws.gstin && 'col-span-2')}
-        >
-          <span className="flex min-w-0 flex-col gap-1.5">
-            <span className="kicker">Profit this month</span>
-            <span className="amount text-2xl font-semibold">
-              {profit.profit < 0 && '− '}
-              {formatINR(Math.abs(profit.profit))}
-            </span>
-            <span className="text-xs text-muted-foreground">Sales less expenses · see your books</span>
-          </span>
-          <ChevronRight className="size-4 shrink-0 text-ink-muted" />
+        <Link href="/books" className="flex items-center justify-between gap-3 px-4 py-3 font-medium transition-colors hover:bg-muted">
+          Books
+          <ChevronRight className="size-4 text-ink-muted" />
         </Link>
-      </section>
-      <Link href="/invoices" className="rise card lift flex items-center justify-between gap-3 px-4 py-3 font-medium">All invoices<ChevronRight className="size-4 text-ink-muted" /></Link>
+      </nav>
 
       {recent.length > 0 && (
         <section className="rise flex flex-col gap-2">
