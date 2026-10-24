@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Bot, Copy, Loader2, MessageCircle } from 'lucide-react'
+import { Bot, Loader2, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { markPaid, paymentChoices } from '@/app/actions'
+import { CopyButton } from '@/components/share'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { formatINR } from '@/lib/money'
@@ -121,13 +122,7 @@ export function Chase({ invoiceId }: { invoiceId: string }) {
             >
               <MessageCircle className="size-4" /> Send on WhatsApp
             </a>
-            <Button
-              variant="outline"
-              className="h-10"
-              onClick={() => navigator.clipboard.writeText(message).then(() => toast.success('Copied'))}
-            >
-              <Copy /> Copy
-            </Button>
+            <CopyButton text={message} className="h-10" />
           </div>
         </div>
       )}
