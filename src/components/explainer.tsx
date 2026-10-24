@@ -194,7 +194,7 @@ export function HowItWorks({ qr }: { qr: string }) {
               <button
                 type="button"
                 onClick={() => seek.current(i)}
-                className="group flex w-full gap-4 rounded-2xl p-3 text-left transition-colors duration-state ease-ambient hover:bg-muted in-data-[active=true]:bg-surface in-data-[active=true]:shadow-card"
+                className="group flex w-full gap-4 rounded-2xl p-3 text-left transition-[background-color,box-shadow,scale] duration-state ease-ambient hover:bg-muted active:scale-[0.99] in-data-[active=true]:bg-surface in-data-[active=true]:shadow-card"
               >
                 <span className="amount flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700 transition-colors duration-state ease-ambient dark:bg-brand-100 in-data-[active=true]:bg-primary in-data-[active=true]:text-primary-foreground dark:in-data-[active=true]:bg-primary">
                   {i + 1}

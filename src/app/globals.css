@@ -393,7 +393,8 @@
     @apply text-xs font-semibold tracking-[0.08em] text-ink-muted uppercase;
   }
   /* Landing atmosphere: a full-bleed wash behind a section, drawn from the
-     colour ramps so it follows dark mode. The page wrapper clips the bleed. */
+     colour ramps so it follows dark mode. Greens and teals only, kept faint.
+     The page wrapper clips the bleed. */
   .wash {
     @apply relative isolate;
   }
@@ -412,34 +413,40 @@
   .wash-hero::before {
     top: -16rem;
     background:
-      radial-gradient(ellipse 38% 55% at 76% 42%, rgb(var(--brand-400) / 0.5), transparent 70%),
-      radial-gradient(ellipse 34% 45% at 14% 28%, rgb(var(--warn-300) / 0.6), transparent 70%),
-      radial-gradient(ellipse 30% 35% at 48% 88%, rgb(var(--ok-300) / 0.4), transparent 70%);
-    mask-image: linear-gradient(to bottom, black 75%, transparent);
+      radial-gradient(ellipse 40% 55% at 76% 42%, rgb(var(--brand-300) / 0.5), transparent 70%),
+      radial-gradient(ellipse 36% 45% at 14% 26%, rgb(var(--ok-300) / 0.28), transparent 70%);
+    mask-image: linear-gradient(to bottom, black 70%, transparent);
+    animation: drift 28s var(--ease-move) infinite alternate;
   }
   /* A faint dot grid that fades out from the middle of the hero. */
   .wash-hero::after {
     top: -16rem;
-    background-image: radial-gradient(rgb(var(--ink) / 0.09) 1px, transparent 1.5px);
+    background-image: radial-gradient(rgb(var(--ink) / 0.06) 1px, transparent 1.5px);
     background-size: 22px 22px;
     mask-image: radial-gradient(ellipse 55% 50% at 50% 50%, black, transparent 75%);
   }
   .wash-band::before {
     background:
-      radial-gradient(ellipse 32% 45% at 28% 50%, rgb(var(--brand-400) / 0.4), transparent 70%),
-      linear-gradient(to bottom, transparent, rgb(var(--brand-200) / 0.7) 22%, rgb(var(--brand-200) / 0.7) 78%, transparent);
+      radial-gradient(ellipse 32% 45% at 28% 50%, rgb(var(--brand-300) / 0.22), transparent 70%),
+      linear-gradient(to bottom, transparent, rgb(var(--brand-100) / 0.6) 25%, rgb(var(--brand-100) / 0.6) 75%, transparent);
   }
   .wash-lang::before {
-    background:
-      radial-gradient(ellipse 22% 60% at 40% 50%, rgb(var(--warn-300) / 0.5), transparent 70%),
-      radial-gradient(ellipse 22% 60% at 60% 50%, rgb(var(--ok-300) / 0.45), transparent 70%);
+    background: radial-gradient(ellipse 30% 60% at 50% 50%, rgb(var(--ok-200) / 0.35), transparent 70%);
   }
   .wash-books::before {
-    background: radial-gradient(ellipse 34% 50% at 26% 50%, rgb(var(--warn-300) / 0.55), transparent 70%);
+    background: radial-gradient(ellipse 34% 50% at 26% 50%, rgb(var(--brand-200) / 0.45), transparent 70%);
   }
   .wash-cta::before {
-    background: radial-gradient(ellipse 45% 55% at 50% 60%, rgb(var(--brand-400) / 0.45), transparent 70%);
+    background: radial-gradient(ellipse 45% 55% at 50% 60%, rgb(var(--brand-300) / 0.28), transparent 70%);
   }
+}
+
+/* Named durations, so `duration-state` and friends resolve. */
+@utility duration-micro {
+  transition-duration: var(--dur-micro);
+}
+@utility duration-state {
+  transition-duration: var(--dur-state);
 }
 
 /* Motion: arriving decelerates, leaving accelerates, ambient is gentle. */
@@ -468,9 +475,58 @@
     box-shadow var(--dur-state) var(--ease-ambient),
     border-color var(--dur-state) var(--ease-ambient);
 }
-.lift:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card-hover);
+@media (hover: hover) and (pointer: fine) {
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+  }
+}
+.lift:active {
+  transform: scale(0.99);
+}
+/* The hero headline sharpens as it rises. Seen once, so it can be a touch richer. */
+@keyframes rise-blur {
+  from { opacity: 0; transform: translateY(10px); filter: blur(6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.rise-blur {
+  animation-name: rise-blur;
+}
+/* Lands after the photo it overlaps. */
+.rise-late {
+  animation-delay: 260ms;
+}
+/* The hero glow breathes, slowly enough that it reads as light, not motion. */
+@keyframes drift {
+  from { transform: translate3d(-1.5%, 1%, 0) scale(1.02); }
+  to { transform: translate3d(1.5%, -1.5%, 0) scale(1); }
+}
+/* Below the fold, sections settle in as they scroll into view. Browsers without
+   scroll timelines just show them. Siblings in a group start a beat apart. */
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes settle {
+  from { transform: scale(1.06); }
+  to { transform: scale(1); }
+}
+@supports (animation-timeline: view()) {
+  .reveal,
+  .reveal-group > * {
+    animation: reveal var(--ease-enter) both;
+    animation-timeline: view();
+    animation-range: entry 5% entry 45%;
+  }
+  .reveal-group > :nth-child(2) { animation-range: entry 12% entry 52%; }
+  .reveal-group > :nth-child(3) { animation-range: entry 19% entry 59%; }
+  .reveal-group > :nth-child(n + 4) { animation-range: entry 26% entry 66%; }
+  /* Photos ease from a slight zoom to rest across their pass through the view. */
+  .settle {
+    animation: settle linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 50%;
+  }
 }
 @keyframes pulse-ring {
   0% { box-shadow: 0 0 0 0 rgb(var(--crit-500) / 0.45); }
@@ -486,10 +542,20 @@
   .stagger > * {
     animation-delay: 0ms !important;
   }
-  .lift:hover {
+  .lift:hover,
+  .lift:active {
     transform: none;
   }
-  .recording {
+  .recording,
+  .wash-hero::before,
+  .settle {
     animation: none;
+  }
+  .rise-blur {
+    animation-name: fade;
+  }
+  .reveal,
+  .reveal-group > * {
+    animation-name: fade;
   }
 }

@@ -22,7 +22,10 @@ function Start({ className = '' }: { className?: string }) {
   return (
     <Link href="/start" className={buttonVariants({ size: 'lg', className: `shadow-lift ${className}` })}>
       Make your first invoice
-      <ArrowRight data-icon="inline-end" />
+      <ArrowRight
+        data-icon="inline-end"
+        className="transition-transform duration-state ease-ambient group-hover/button:translate-x-0.5"
+      />
     </Link>
   )
 }
@@ -85,7 +88,7 @@ function Way({
   return (
     <article className="card flex flex-col overflow-hidden">
       <div className="relative aspect-[4/3] bg-muted">
-        <Image src={src} alt={alt} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
+        <Image src={src} alt={alt} fill sizes="(min-width: 768px) 50vw, 100vw" className="settle object-cover" />
       </div>
       <div className="flex flex-col gap-2 p-6">
         <span className="kicker flex items-center gap-1.5 text-brand-700">
@@ -115,7 +118,7 @@ export async function Landing() {
         <section className="wash wash-hero stagger grid items-center gap-12 md:grid-cols-[1.1fr_1fr] md:gap-16">
           <div className="flex flex-col gap-6">
             <p className="kicker rise">For freelancers and small sellers</p>
-            <h1 className="rise text-5xl leading-[1.02] font-semibold md:text-7xl">Say it, get&nbsp;paid.</h1>
+            <h1 className="rise rise-blur text-5xl leading-[1.02] font-semibold md:text-7xl">Say it, get&nbsp;paid.</h1>
             <p className="rise max-w-lg text-lg leading-relaxed text-muted-foreground">
               Say an invoice out loud. Get a GST invoice with a UPI QR, and a reminder ready to send on WhatsApp.
             </p>
@@ -141,37 +144,37 @@ export async function Landing() {
                 className="object-cover"
               />
             </div>
-            <div className="absolute right-4 bottom-0 left-4 flex justify-start md:right-auto md:-bottom-10 md:-left-12">
+            <div className="rise rise-late absolute right-4 bottom-0 left-4 flex justify-start md:right-auto md:-bottom-10 md:-left-12">
               <SpokenInvoice />
             </div>
           </div>
         </section>
 
-        <div className="wash wash-band">
+        <div className="wash wash-band reveal">
           <HowItWorks qr={qr} />
         </div>
 
-        <section className="wash wash-lang rise flex flex-col items-center gap-5 text-center">
-          <h2 className="text-2xl font-semibold md:text-3xl">Bill in the language you think in.</h2>
-          <ul className="flex flex-wrap justify-center gap-2">
+        <section className="wash wash-lang flex flex-col items-center gap-5 text-center">
+          <h2 className="reveal text-2xl font-semibold md:text-3xl">Bill in the language you think in.</h2>
+          <ul className="reveal-group flex flex-wrap justify-center gap-2">
             {LANGUAGES.map((l) => (
               <li key={l.lang} lang={l.lang} className="rounded-full border border-line bg-surface px-4 py-2 text-lg">
                 {l.label}
               </li>
             ))}
           </ul>
-          <p className="max-w-md text-muted-foreground">
+          <p className="reveal max-w-md text-muted-foreground">
             Rupee amounts, customer names and GST rates come through in all four. Every field is yours to check before
             anything is saved.
           </p>
         </section>
 
         <section className="flex flex-col gap-8">
-          <div className="flex flex-col gap-2">
+          <div className="reveal flex flex-col gap-2">
             <p className="kicker">Two ways in</p>
             <h2 className="text-3xl font-semibold md:text-4xl">Money in, money out.</h2>
           </div>
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="reveal-group grid gap-6 md:grid-cols-2">
             <Way
               src="/landing/say.jpg"
               alt="A developer saying an invoice into his phone by a window"
@@ -196,16 +199,16 @@ export async function Landing() {
         </section>
 
         <section className="wash wash-books grid items-center gap-10 md:grid-cols-2 md:gap-16">
-          <div className="relative aspect-[3/2] overflow-hidden rounded-3xl bg-muted shadow-card">
+          <div className="reveal relative aspect-[3/2] overflow-hidden rounded-3xl bg-muted shadow-card">
             <Image
               src="/landing/books.jpg"
               alt="Receipts, a green ledger and a coffee, neatly on a desk"
               fill
               sizes="(min-width: 768px) 50vw, 100vw"
-              className="object-cover"
+              className="settle object-cover"
             />
           </div>
-          <div className="flex flex-col gap-5">
+          <div className="reveal-group flex flex-col gap-5">
             <p className="kicker">The books</p>
             <h2 className="text-3xl font-semibold md:text-4xl">Your books keep themselves.</h2>
             <p className="leading-relaxed text-muted-foreground">
@@ -226,10 +229,10 @@ export async function Landing() {
           </div>
         </section>
 
-        <div className="wash wash-cta">
+        <div className="wash wash-cta reveal">
           <section className="relative overflow-hidden rounded-3xl border border-line bg-surface md:min-h-[26rem]">
             <div className="relative aspect-[3/2] md:absolute md:inset-0 md:aspect-auto">
-              <Image src="/landing/wall.jpg" alt="" fill sizes="100vw" className="object-cover object-left" />
+              <Image src="/landing/wall.jpg" alt="" fill sizes="100vw" className="settle object-cover object-left" />
             </div>
             <div className="relative flex flex-col items-start gap-4 p-6 md:absolute md:top-1/2 md:right-12 md:max-w-sm md:-translate-y-1/2 md:rounded-2xl md:bg-surface md:p-8 md:shadow-card">
               <h2 className="text-3xl font-semibold">Send your first invoice today.</h2>
