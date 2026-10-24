@@ -14,7 +14,9 @@ import { requireWorkspace } from '@/lib/workspace'
 // Debit accounts hold what you have or spent; credit accounts what you earned or owe.
 const ACCOUNTS: { key: string; label: string }[] = [
   { key: 'bank', label: 'Bank' },
+  { key: 'pine_labs_clearing', label: 'Pine Labs, not yet in bank' },
   { key: 'receivable', label: 'Owed to you' },
+  { key: 'tds_receivable', label: 'TDS kept by clients' },
   { key: 'cgst_input', label: 'CGST paid' },
   { key: 'sgst_input', label: 'SGST paid' },
   { key: 'igst_input', label: 'IGST paid' },
@@ -23,11 +25,18 @@ const ACCOUNTS: { key: string; label: string }[] = [
   { key: 'cgst_payable', label: 'CGST collected' },
   { key: 'sgst_payable', label: 'SGST collected' },
   { key: 'igst_payable', label: 'IGST collected' },
+  { key: 'owner_contribution', label: 'Put in by you' },
 ]
 
 const accountLabel = (account: string) => ACCOUNTS.find((a) => a.key === account)?.label ?? account
 
-const SOURCE: Record<string, string> = { invoice: 'Invoice', payment: 'Payment', bill: 'Bill' }
+const SOURCE: Record<string, string> = {
+  invoice: 'Invoice',
+  payment: 'Payment',
+  bill: 'Bill',
+  reversal: 'Cancelled invoice',
+  settlement: 'Pine Labs payout',
+}
 
 const monthName = (month: string, style: 'long' | 'short' = 'long') =>
   new Intl.DateTimeFormat('en-IN', { month: style, ...(style === 'long' && { year: 'numeric' }), timeZone: 'UTC' })
@@ -51,7 +60,12 @@ export default async function BooksPage() {
   const chart = monthly.map((m) => ({ month: monthName(m.month, 'short'), Sales: m.revenue, Expenses: m.expenses }))
   const hasHistory = monthly.some((m) => m.revenue || m.expenses)
 
-  const rows = ACCOUNTS.map((a) => {
+  // Every account in the ledger counts towards the check, listed or not.
+  const known = [
+    ...ACCOUNTS,
+    ...balances.filter((b) => !ACCOUNTS.some((a) => a.key === b.account)).map((b) => ({ key: b.account, label: b.account })),
+  ]
+  const rows = known.map((a) => {
     const b = balances.find((r) => r.account === a.key)
     const net = (b?.debit ?? 0) - (b?.credit ?? 0)
     return { ...a, debit: net > 0 ? net : 0, credit: net < 0 ? -net : 0 }
@@ -90,6 +104,7 @@ export default async function BooksPage() {
           value={signed(profit.profit)}
           tone={profit.profit < 0 ? 'crit' : 'brand'}
           note={profit.profit < 0 ? 'Spent more than you billed' : 'Sales less expenses'}
+          extra={`Money in: ${formatINR(profit.received)} received`}
         />
         <Stat
           label="Owed to you"
@@ -216,12 +231,14 @@ function Stat({
   label,
   value,
   note,
+  extra,
   tone,
   href,
 }: {
   label: string
   value: string
   note: string
+  extra?: string
   tone?: 'brand' | 'crit'
   href?: string
 }) {
@@ -237,6 +254,7 @@ function Stat({
       >
         {value}
       </span>
+      {extra && <span className="amount truncate text-xs font-medium">{extra}</span>}
       <span className="truncate text-xs text-muted-foreground">{note}</span>
     </>
   )
