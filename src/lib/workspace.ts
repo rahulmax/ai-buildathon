@@ -19,7 +19,10 @@ export type Workspace = {
 const UUID = /^[0-9a-f-]{36}$/
 
 export async function currentWorkspace(): Promise<Workspace | null> {
-  const id = (await cookies()).get(COOKIE)?.value
+  return workspaceById((await cookies()).get(COOKIE)?.value)
+}
+
+export async function workspaceById(id: string | undefined): Promise<Workspace | null> {
   if (!id || !UUID.test(id)) return null
   const sql = await db()
   const [ws] = await sql<Workspace[]>`

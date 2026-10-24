@@ -1,16 +1,15 @@
 'use server'
 
-import { randomBytes } from 'node:crypto'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { claimsGst, findDuplicateBill } from '@/lib/bills'
 import { db } from '@/lib/db'
-import { canChargeGst, fyCode, totals } from '@/lib/gst'
+import { canChargeGst } from '@/lib/gst'
 import { checkGstin } from '@/lib/gstin'
 import { postEntry, type Account } from '@/lib/ledger'
-import { phoneKey, type CustomerOption } from '@/lib/customers'
-import { workspaceCustomers } from '@/lib/invoices'
+import type { CustomerOption } from '@/lib/customers'
+import { saveInvoice, workspaceCustomers } from '@/lib/invoices'
 import { cancelPayLink, settleAll, syncPayLink } from '@/lib/pinelabs'
 import { BillForm, DetailsForm, InvoiceForm } from '@/lib/schemas'
 import { COOKIE, requireWorkspace } from '@/lib/workspace'
@@ -55,8 +54,6 @@ export async function saveDetails(_: ActionState, form: FormData): Promise<Actio
   redirect('/')
 }
 
-const slug = () => randomBytes(6).toString('base64url')
-
 export type InvoiceFormData = { registered: boolean; customers: CustomerOption[] }
 
 // What the confirm form needs: can this workspace charge GST, and who its customers are.
@@ -68,119 +65,10 @@ export async function loadInvoiceForm(): Promise<InvoiceFormData> {
 // Save the invoice and post its ledger entry in one transaction.
 export async function createInvoice(input: InvoiceForm): Promise<{ slug: string } | { error: string }> {
   const ws = await requireWorkspace()
-  const f = InvoiceForm.parse(input)
-  let gstin: string | null = null
-  let placeOfSupply = f.customer_state
-  if (f.customer_gstin) {
-    const check = checkGstin(f.customer_gstin)
-    if (!check.ok) return { error: `Customer GSTIN: ${check.error}` }
-    gstin = check.gstin
-    // A registered customer's place of supply is the state on their GSTIN.
-    placeOfSupply = check.state
-  }
-  // Never trust the form on GST: without a GSTIN the seller can't charge any.
-  const registered = canChargeGst(ws.gstin)
-  const t = totals(
-    f.lines.map((l) => ({
-      description: l.description,
-      quantity: l.quantity,
-      rate: l.rate,
-      gstRate: registered ? l.gst_rate : 0,
-    })),
-    ws.state,
-    placeOfSupply,
-  )
-  const phone = f.customer_phone || null
-  const phoneDigits = phone ? phoneKey(phone) : ''
-  const sql = await db()
-
-  if (f.customer_id) {
-    const [own] = await sql`select 1 from customer where id = ${f.customer_id} and workspace_id = ${ws.id}`
-    if (!own) return { error: 'Couldn’t find that customer. Pick again.' }
-  }
-
-  const result = await sql.begin(async (tx) => {
-    // Same customer: the owner said so, or the GSTIN, phone or exact name matches.
-    // A different GSTIN on file means a different business, whatever the name.
-    let customerId: string | null = f.customer_id ?? null
-    if (!customerId && gstin) {
-      const [c] = await tx`
-        select id from customer where workspace_id = ${ws.id} and gstin = ${gstin}
-        order by created_at limit 1`
-      customerId = c?.id ?? null
-    }
-    if (!customerId && phoneDigits.length === 10) {
-      const [c] = await tx`
-        select id from customer
-        where workspace_id = ${ws.id}
-          and right(regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g'), 10) = ${phoneDigits}
-          and (gstin is null or ${gstin}::text is null or gstin = ${gstin})
-        order by created_at limit 1`
-      customerId = c?.id ?? null
-    }
-    if (!customerId) {
-      const [c] = await tx`
-        select id from customer
-        where workspace_id = ${ws.id} and lower(name) = lower(${f.customer_name})
-          and (gstin is null or ${gstin}::text is null or gstin = ${gstin})
-        order by created_at limit 1`
-      customerId = c?.id ?? null
-    }
-    if (customerId) {
-      await tx`
-        update customer set
-          phone = coalesce(${phone}::text, phone),
-          gstin = coalesce(${gstin}::text, gstin),
-          state = coalesce(${gstin ? placeOfSupply : null}::text, state)
-        where id = ${customerId}`
-    } else {
-      const [c] = await tx`
-        insert into customer (workspace_id, name, state, phone, gstin)
-        values (${ws.id}, ${f.customer_name}, ${placeOfSupply}, ${phone}, ${gstin})
-        returning id`
-      customerId = c.id as string
-    }
-
-    // Numbers run in sequence per workspace per financial year. Lock to keep them unique.
-    await tx`select pg_advisory_xact_lock(hashtext(${ws.id}))`
-    const fy = fyCode(new Date(`${f.issue_date}T00:00:00Z`))
-    const [{ n }] = await tx`
-      select count(*)::int + 1 as n from invoice
-      where workspace_id = ${ws.id} and number like ${`INV-${fy}-%`}`
-    const number = `INV-${fy}-${String(n).padStart(4, '0')}`
-
-    const [inv] = await tx`
-      insert into invoice (workspace_id, customer_id, number, issue_date, due_date, place_of_supply,
-        subtotal, cgst, sgst, igst, total, public_slug, language, transcript)
-      values (${ws.id}, ${customerId}, ${number}, ${f.issue_date}, ${f.due_date || null}, ${placeOfSupply},
-        ${t.subtotal}, ${t.cgst}, ${t.sgst}, ${t.igst}, ${t.total}, ${slug()}, ${f.language ?? null}, ${f.transcript ?? null})
-      returning id, public_slug`
-
-    for (const [i, l] of t.lines.entries()) {
-      await tx`
-        insert into invoice_line (invoice_id, description, sac_hsn, quantity, rate, amount, gst_rate)
-        values (${inv.id}, ${l.description}, ${f.lines[i].sac_hsn ?? null}, ${l.quantity}, ${l.rate}, ${l.amount}, ${l.gstRate})`
-    }
-
-    await postEntry(tx, {
-      workspaceId: ws.id,
-      date: f.issue_date,
-      memo: `Invoice ${number} to ${f.customer_name}`,
-      sourceType: 'invoice',
-      sourceId: inv.id,
-      lines: [
-        { account: 'receivable', debit: t.total, customerId },
-        { account: 'revenue', credit: t.subtotal },
-        { account: 'cgst_payable', credit: t.cgst },
-        { account: 'sgst_payable', credit: t.sgst },
-        { account: 'igst_payable', credit: t.igst },
-      ],
-    })
-    return inv
-  })
-
+  const res = await saveInvoice(ws, input)
+  if ('error' in res) return res
   revalidatePath('/', 'layout')
-  return { slug: result.public_slug as string }
+  return { slug: res.slug }
 }
 
 // Cancel, credit-note style: the invoice stays, marked cancelled, and a reversing
