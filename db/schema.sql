@@ -187,3 +187,7 @@ alter table ledger_line add constraint ledger_line_account_check check (account 
   'cgst_input', 'sgst_input', 'igst_input',
   'pine_labs_clearing', 'tds_receivable', 'owner_contribution'
 ));
+
+-- access: a "Save with email" link carries the email to attach once the link is clicked.
+-- Sign-in links leave it null.
+alter table magic_link add column if not exists email text;

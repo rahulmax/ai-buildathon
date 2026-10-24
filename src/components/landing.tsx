@@ -5,6 +5,7 @@ import { ArrowRight, Camera, Mic } from 'lucide-react'
 import { HowItWorks } from '@/components/explainer'
 import { Mark } from '@/components/mark'
 import { buttonVariants } from '@/components/ui/button'
+import { emailEnabled } from '@/lib/email'
 import { formatINR } from '@/lib/money'
 import { qrSvg, upiLink } from '@/lib/upi'
 
@@ -120,6 +121,11 @@ export async function Landing() {
           <div className="rise flex flex-col items-start gap-3">
             <Start />
             <p className="text-sm text-ink-muted">No sign-up. Your first invoice takes a minute.</p>
+            {emailEnabled() && (
+              <Link href="/signin" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+                Have books already? Sign in
+              </Link>
+            )}
           </div>
         </div>
         <div className="rise relative pb-16 md:pb-0">

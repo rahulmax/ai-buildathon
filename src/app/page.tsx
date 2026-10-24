@@ -3,6 +3,8 @@ import { ChevronRight, FileText, Receipt } from 'lucide-react'
 import { Capture } from '@/components/capture'
 import { Landing } from '@/components/landing'
 import { Mark } from '@/components/mark'
+import { SaveEmail } from '@/components/save-email'
+import { StartFresh } from '@/components/start-fresh'
 import { gstForMonth, profitForMonth, recentActivity, whoOwesMe } from '@/lib/books'
 import { formatDate, todayIST } from '@/lib/dates'
 import { formatINR } from '@/lib/money'
@@ -35,6 +37,7 @@ export default async function Home() {
       <div className="rise">
         <Capture supplierState={ws.state} services={services} />
       </div>
+      <SaveEmail ws={ws} />
 
       <section className="rise grid grid-cols-2 gap-3">
         <Link href="/owed" className="card lift flex flex-col gap-1.5 p-4">
@@ -106,6 +109,7 @@ export default async function Home() {
           </div>
         </section>
       )}
+      <StartFresh saved={Boolean(ws.email)} />
     </main>
   )
 }
