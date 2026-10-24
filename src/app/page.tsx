@@ -89,7 +89,7 @@ export default async function Home() {
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate font-medium">{r.title}</span>
                     <span className="text-xs text-muted-foreground">
-                      {r.kind === 'invoice' ? (r.status === 'paid' ? 'Paid' : 'Invoice') : 'Bill'} · {formatDate(r.date)}
+                      {r.kind === 'invoice' ? (r.status === 'paid' ? 'Paid' : r.status === 'cancelled' ? 'Cancelled' : 'Invoice') : 'Bill'} · {formatDate(r.date)}
                     </span>
                   </span>
                   <span className="amount text-sm font-medium">{formatINR(r.amount)}</span>
