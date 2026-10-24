@@ -39,13 +39,13 @@ export type ChaseInput = {
   dueDate: string | null
   daysOverdue: number
   invoiceUrl: string
-  upiLink: string
-  language: string
+  // The one way to pay: the invoice's Pine Labs link, or the invoice page with its UPI QR.
+  payLink: string
+  gateway: boolean
 }
 
 export type ChaseResult = {
   message: string | null
-  paymentLink: string | null
   tone: string | null
   runId: string | null
   status: string
@@ -68,20 +68,14 @@ function pick(obj: unknown, keys: string[], depth = 0): string | null {
   return null
 }
 
-// Only a real Pine Labs link counts. Without Plural keys the agent hands back our own invoice URL.
-const PINE = /pinelabs|plural|pinepg/i
-
-function findUrl(obj: unknown) {
-  const direct = pick(obj, ['payment_link', 'paymentLink', 'short_url', 'link', 'url', 'payment_url'])
-  if (direct?.startsWith('http') && PINE.test(direct)) return direct
-  const text = JSON.stringify(obj ?? {})
-  return text.match(/https:\/\/[^"\s\\]*(pinelabs|plural|pinepg)[^"\s\\]*/i)?.[0] ?? null
-}
-
-// The collections agent: decides the tone from how late the invoice is,
-// creates a Pine Labs payment link, and drafts the reminder. A human approves
+// The collections agent: decides the tone from how late the invoice is and
+// drafts the reminder, in English, around the link we give it. It must not
+// make its own payment link: one way to pay (OQ-INV-8). A human approves
 // before anything is sent.
 export async function runCollectionsAgent(input: ChaseInput): Promise<ChaseResult> {
+  const linkStep = input.gateway
+    ? `The payment link is ${input.payLink}, a Pine Labs link already made for this invoice. Use it exactly as given. Do not create another payment link.`
+    : `The payment link is ${input.payLink}, which shows the invoice with a UPI QR. Use it exactly as given. Do not create a payment link.`
   const result = await runAgent(COLLECTIONS_AGENT_ID, {
     action: 'process',
     inputs: {
@@ -94,15 +88,15 @@ export async function runCollectionsAgent(input: ChaseInput): Promise<ChaseResul
         due_date: input.dueDate,
         days_overdue: input.daysOverdue,
         invoice_url: input.invoiceUrl,
-        upi_link: input.upiLink,
+        payment_link: input.payLink,
       },
       steps: [
-        `Create a Pine Labs payment link for INR ${input.amountRupees} referencing ${input.invoiceNumber}. If you cannot, the link is ${input.invoiceUrl}, which shows the invoice with a UPI QR.`,
+        linkStep,
         `Pick a tone from days_overdue: 0 or less is a friendly heads-up, 1 to 14 is a polite reminder, over 14 is firm but courteous.`,
-        `Draft a short WhatsApp reminder in ${input.language}, from ${input.sellerName}, with the amount, the invoice number and the link written out in full. Never a placeholder like [Payment Link]. Under 60 words, no subject line.`,
+        `Draft a short WhatsApp reminder in English, from ${input.sellerName}, with the amount, the invoice number and the payment link written out in full. Never a placeholder like [Payment Link]. Under 60 words, no subject line.`,
         'Do not send anything. A human approves the message first.',
       ],
-      output_format: { message: 'string', payment_link: 'string', tone: 'string' },
+      output_format: { message: 'string', tone: 'string' },
     },
     context: {
       seller_name: input.sellerName,
@@ -113,7 +107,6 @@ export async function runCollectionsAgent(input: ChaseInput): Promise<ChaseResul
 
   return {
     message: pick(result.output, ['message', 'reminder', 'whatsapp_message', 'draft', 'body', 'text']),
-    paymentLink: findUrl(result.output) ?? findUrl(result.tool_calls),
     tone: pick(result.output, ['tone']),
     runId: result.run_id ?? null,
     status: result.status,
