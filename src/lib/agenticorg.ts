@@ -1,10 +1,34 @@
 import 'server-only'
-import { AgenticOrg, type AgentRunResult } from 'agenticorg-sdk'
 
 const BASE_URL = process.env.AGENTICORG_BASE_URL ?? 'https://agenticorg.hackathon.pinelabs.com'
+const API = `${BASE_URL}/api/v1`
 
-export const agenticOrgReady = () =>
-  Boolean(process.env.AGENTICORG_API_KEY && process.env.AGENTICORG_COMPANY_ID)
+// "Say it get paid: Collections" in our AgenticOrg org.
+const COLLECTIONS_AGENT_ID = process.env.AGENTICORG_COLLECTIONS_AGENT_ID ?? 'c17ea5b6-f3de-4f23-91c0-2894d4311779'
+
+export const agenticOrgReady = () => Boolean(process.env.AGENTICORG_API_KEY)
+
+type AgentRunResult = {
+  run_id?: string
+  status: string
+  output?: unknown
+  confidence?: number
+  tool_calls?: Record<string, unknown>[]
+  reasoning_trace?: string[]
+  hitl_trigger?: string | null
+}
+
+// Agents run by UUID. A type name like 'ar_collections' goes to a different endpoint and the key is rejected.
+async function runAgent(agentId: string, body: unknown): Promise<AgentRunResult> {
+  const res = await fetch(`${API}/agents/${agentId}/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.AGENTICORG_API_KEY}` },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(45_000),
+  })
+  if (!res.ok) throw new Error(`AgenticOrg run failed: ${res.status} ${(await res.text()).slice(0, 200)}`)
+  return (await res.json()) as AgentRunResult
+}
 
 export type ChaseInput = {
   sellerName: string
@@ -15,13 +39,13 @@ export type ChaseInput = {
   dueDate: string | null
   daysOverdue: number
   invoiceUrl: string
-  upiLink: string
-  language: string
+  // The one way to pay: the invoice's Pine Labs link, or the invoice page with its UPI QR.
+  payLink: string
+  gateway: boolean
 }
 
 export type ChaseResult = {
   message: string | null
-  paymentLink: string | null
   tone: string | null
   runId: string | null
   status: string
@@ -44,26 +68,16 @@ function pick(obj: unknown, keys: string[], depth = 0): string | null {
   return null
 }
 
-function findUrl(obj: unknown) {
-  const direct = pick(obj, ['payment_link', 'paymentLink', 'short_url', 'link', 'url', 'payment_url'])
-  if (direct?.startsWith('http')) return direct
-  const text = JSON.stringify(obj ?? {})
-  return text.match(/https:\/\/[^"\s\\]*(pinelabs|plural)[^"\s\\]*/i)?.[0] ?? null
-}
-
-// The collections agent: decides the tone from how late the invoice is,
-// creates a Pine Labs payment link, and drafts the reminder. A human approves
+// The collections agent: decides the tone from how late the invoice is and
+// drafts the reminder, in English, around the link we give it. It must not
+// make its own payment link: one way to pay (OQ-INV-8). A human approves
 // before anything is sent.
 export async function runCollectionsAgent(input: ChaseInput): Promise<ChaseResult> {
-  const client = new AgenticOrg({
-    apiKey: process.env.AGENTICORG_API_KEY,
-    baseUrl: BASE_URL,
-    timeout: 45_000,
-  })
-
-  const result: AgentRunResult = await client.agents.run('ar_collections', {
+  const linkStep = input.gateway
+    ? `The payment link is ${input.payLink}, a Pine Labs link already made for this invoice. Use it exactly as given. Do not create another payment link.`
+    : `The payment link is ${input.payLink}, which shows the invoice with a UPI QR. Use it exactly as given. Do not create a payment link.`
+  const result = await runAgent(COLLECTIONS_AGENT_ID, {
     action: 'process',
-    companyId: process.env.AGENTICORG_COMPANY_ID,
     inputs: {
       task: 'chase_overdue_invoice',
       invoice: {
@@ -74,15 +88,15 @@ export async function runCollectionsAgent(input: ChaseInput): Promise<ChaseResul
         due_date: input.dueDate,
         days_overdue: input.daysOverdue,
         invoice_url: input.invoiceUrl,
-        upi_link: input.upiLink,
+        payment_link: input.payLink,
       },
       steps: [
-        `Create a Pine Labs payment link for INR ${input.amountRupees} referencing ${input.invoiceNumber}.`,
+        linkStep,
         `Pick a tone from days_overdue: 0 or less is a friendly heads-up, 1 to 14 is a polite reminder, over 14 is firm but courteous.`,
-        `Draft a short WhatsApp reminder in ${input.language}, from ${input.sellerName}, with the amount, the invoice number and the payment link. Under 60 words, no subject line.`,
+        `Draft a short WhatsApp reminder in English, from ${input.sellerName}, with the amount, the invoice number and the payment link written out in full. Never a placeholder like [Payment Link]. Under 60 words, no subject line.`,
         'Do not send anything. A human approves the message first.',
       ],
-      output_format: { message: 'string', payment_link: 'string', tone: 'string' },
+      output_format: { message: 'string', tone: 'string' },
     },
     context: {
       seller_name: input.sellerName,
@@ -93,7 +107,6 @@ export async function runCollectionsAgent(input: ChaseInput): Promise<ChaseResul
 
   return {
     message: pick(result.output, ['message', 'reminder', 'whatsapp_message', 'draft', 'body', 'text']),
-    paymentLink: findUrl(result.output) ?? findUrl(result.tool_calls),
     tone: pick(result.output, ['tone']),
     runId: result.run_id ?? null,
     status: result.status,

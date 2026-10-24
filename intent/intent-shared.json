@@ -1,0 +1,930 @@
+{
+  "meta": {
+    "version": "0.1.0",
+    "created": "2026-10-24",
+    "last_updated": "2026-10-24",
+    "project_name": "Say it, get paid",
+    "bounded_context": "shared",
+    "scope_status": "core",
+    "references": [
+      "intent-invoicing.json",
+      "intent-bills.json",
+      "intent-books.json",
+      "entitlements.json"
+    ],
+    "sources": [
+      "README.md (problem, bar, deliverables)",
+      "SPEC.md (flow, data contract, rules, screens, cut order)",
+      "ROADMAP.md (months 1 to 6, pricing, positioning)",
+      "TODO.md, PLAN.md (checkpoints, owners)",
+      "BRIEF-chetan.md, NEEDS.md (users, keys, organiser questions)",
+      "git e9524b2..f53021f (decisions made while building)",
+      "db/schema.sql, src/app/actions.ts, src/lib/* (what is actually built)"
+    ],
+    "current_user_role": "product-owner",
+    "how_to_read": "One file per bounded context, Synacor-style. Load intent-shared.json plus the domain file you are working in. Shapes follow DBiz/synacor/packages/intent; no lint, verify or schema checks are wired here on purpose. build_status on journeys and capabilities says what exists in code today: built | partial | not-built.",
+    "phases": [
+      {
+        "id": "today",
+        "name": "Event build, 2026-10-24, 09:00 to 21:00 IST"
+      },
+      {
+        "id": "month-1",
+        "name": "November 2026: something people keep using"
+      },
+      {
+        "id": "month-2",
+        "name": "December 2026: the books fill themselves"
+      },
+      {
+        "id": "month-3",
+        "name": "January 2027: GST filing ready"
+      },
+      {
+        "id": "months-4-6",
+        "name": "February to April 2027: the year end"
+      }
+    ],
+    "design_system": {
+      "platform": "web, mobile-first",
+      "framework": "Next.js App Router (see AGENTS.md: read node_modules/next/dist/docs first)",
+      "component_lib": "shadcn/ui + tremor charts",
+      "styling": "Enatel tokens as shadcn roles in src/app/globals.css",
+      "typography": {
+        "primary_font": "IBM Plex Sans",
+        "figures": "tabular"
+      },
+      "dark_mode": "follows device"
+    },
+    "assumptions": [
+      "A1: The owner is one person. A workspace has exactly one human behind it; there is no team, role or invite model today.",
+      "A2: Everyone in the room can try it with no sensitive data, which is why there is no sign-up and why bill photos are not kept.",
+      "A3: The judges count users and money; the traction line is '₹X invoiced through this today', not just '20 users'.",
+      "A4: The invoice is the hook; the books are the company. Today the books stay mostly hidden behind a few views."
+    ]
+  },
+  "product": {
+    "one_line": "Talk to make an invoice, snap to log a bill, and your books keep themselves, in your own language.",
+    "two_ways_in": [
+      "Money in: say an invoice, get a GST invoice at its own link, a UPI QR and a reminder ready for WhatsApp.",
+      "Money out: snap a bill, and it is logged as an expense with the GST you paid."
+    ],
+    "track": "AI for Finance (title sponsor Pine Labs)",
+    "bar": "Twenty real people, outside the team, using the product during the event.",
+    "positioning": "Vyapar, Khatabook and Zoho Books are forms you fill in. This is a sentence you say or a photo you take, in your own language, with double entry underneath from day one.",
+    "precedent": "Chat2Cash (chats to invoices) won Build India 2026 in Bengaluru. Ours has to look different: Indian-language voice, real books, a Pine Labs payment, and the design.",
+    "backup_idea": "Landing-page 'sameness score' critic in the Creative AI track, only if the finance build hits a wall early."
+  },
+  "adrs": [
+    {
+      "id": "ADR-001",
+      "title": "Voice first, in Indian languages",
+      "decision": "The primary input is a spoken sentence in English, Hindi, Kannada or Malayalam. Typing is the fallback, not the front door.",
+      "why": "It is the difference from Chat2Cash and from form-based accounting apps. Kannada leads the demo because the event is in Bengaluru and Chetan can voice it.",
+      "date": "2026-10-23",
+      "source": "README.md, c1e87b8"
+    },
+    {
+      "id": "ADR-002",
+      "title": "No sign-up; the cookie is the account",
+      "decision": "The first visit fills in your details and creates a workspace; its id lives in an httpOnly cookie for a year.",
+      "why": "A login wall at 16:00 costs users against the 20-user bar.",
+      "consequence": "Clear the cookie or switch device and the books are gone unless the owner saved an email (OQ-SH-5). 'Start fresh' lets a shared phone change hands (OQ-SH-4).",
+      "date": "2026-10-23",
+      "source": "SPEC.md §The flow, src/lib/workspace.ts"
+    },
+    {
+      "id": "ADR-003",
+      "title": "Double-entry underneath, a few plain views on top",
+      "decision": "Every money event posts a balanced ledger entry. Users see views (who owes me, GST this month, profit), never a ledger form.",
+      "why": "The books are right because double entry is there from day one, not bolted on. That is the long-term product.",
+      "date": "2026-10-23",
+      "source": "README.md, SPEC.md §Rules, ROADMAP.md"
+    },
+    {
+      "id": "ADR-004",
+      "title": "AI proposes, the person confirms",
+      "decision": "Every AI output (extracted invoice, read bill, drafted reminder) lands in an editable form or preview. Nothing is saved or sent until the person confirms.",
+      "why": "Amounts are the most likely thing to be misheard, and a wrong invoice is worse than a slow one.",
+      "date": "2026-10-23",
+      "source": "SPEC.md §The flow steps 4 and 6, e9524b2"
+    },
+    {
+      "id": "ADR-005",
+      "title": "UPI is the floor, Pine Labs sits on top",
+      "decision": "Every invoice carries a upi://pay link and QR built from the owner's UPI ID. A Pine Labs payment link is added when keys or the AgenticOrg agent allow.",
+      "why": "Pine Labs self-serve test keys were uncertain; UPI works with no keys.",
+      "date": "2026-10-23",
+      "source": "SPEC.md §Cut order, NEEDS.md, src/lib/agenticorg.ts"
+    },
+    {
+      "id": "ADR-006",
+      "title": "WhatsApp by wa.me hand-off, no API",
+      "decision": "Reminders open WhatsApp with the message prefilled via a wa.me link, or copy to clipboard. The owner presses send in WhatsApp.",
+      "why": "No Business API approval needed, and the human stays the sender.",
+      "date": "2026-10-23",
+      "source": "SPEC.md §The flow step 5"
+    },
+    {
+      "id": "ADR-007",
+      "title": "Collections run through AgenticOrg's ar_collections agent, Claude as fallback",
+      "decision": "'Send reminder' asks the Pine Labs AgenticOrg agent to pick a tone from days overdue, create a Pine Labs payment link and draft the message. If the agent is not configured or fails, Claude drafts it against our own invoice link.",
+      "why": "Shows a sponsor agent doing real work, with no single point of failure on stage.",
+      "date": "2026-10-24",
+      "source": "e9524b2, src/app/api/chase/route.ts"
+    },
+    {
+      "id": "ADR-008",
+      "title": "'Chase' is called 'Send reminder'",
+      "decision": "User-facing copy says Send reminder. Code and tables still say chase.",
+      "why": "Plainer for Indian users; 'chase' reads aggressive.",
+      "date": "2026-10-24",
+      "source": "3f5379d"
+    },
+    {
+      "id": "ADR-009",
+      "title": "Bill photos and voice audio are not stored",
+      "decision": "Keep the confirmed fields and the transcript; drop the image and the audio.",
+      "why": "We hold no images of people's receipts, which matters with strangers trying it at an event.",
+      "date": "2026-10-23",
+      "source": "SPEC.md §Photo to bill"
+    },
+    {
+      "id": "ADR-010",
+      "title": "Onboarding asks what you sell, coded to official SAC/HSN",
+      "decision": "Your details include the things you sell. Claude matches each to a code from the official GST HSN/SAC master and may only pick codes from that list. Invoice lines inherit the code from the spoken service.",
+      "why": "A real GST invoice carries SAC/HSN; doing it once at onboarding keeps the voice sentence short.",
+      "date": "2026-10-24",
+      "source": "de9e665, src/lib/claude.ts pickCodes"
+    },
+    {
+      "id": "ADR-011",
+      "title": "Landing page at / for first-time visitors",
+      "decision": "No workspace cookie shows the landing page at /; its button leads to /start. Same link for the 16:00 send.",
+      "why": "One link to share, and people who arrive cold get the pitch before the form.",
+      "date": "2026-10-24",
+      "source": "292f817"
+    },
+    {
+      "id": "ADR-012",
+      "title": "A /books page beyond the two views",
+      "decision": "Profit this month with expenses by category, every account's balance with a trial-balance check, and the last 20 journal entries.",
+      "why": "Makes 'real books' visible to judges. Note the tension with 'two views only' in README; see OQ-BKS-2.",
+      "date": "2026-10-24",
+      "source": "b377a53"
+    }
+  ],
+  "actors": [
+    {
+      "name": "owner",
+      "archetype": "solo-operator",
+      "description": "A freelancer or one-person business in India: designer, developer, consultant, tutor, small shop. Sends invoices, keeps receipts, has no time or training for accounting software.",
+      "goals": [
+        "Send a proper GST invoice without typing one",
+        "Get paid faster, in one tap for the customer",
+        "Know who owes them and how much, without a spreadsheet",
+        "Know what GST they owe this month",
+        "Log expenses without a bag of receipts at year end",
+        "Know if they made money this month"
+      ],
+      "pain_points": [
+        "Every week: making invoices, chasing late payments, digging up an old invoice a client asks for",
+        "Every month: no idea if they made money; personal and business spending mixed in one account; no idea what GST they owe",
+        "Through the year: advance tax nobody works out; TDS clients deduct (usually 10% of professional fees) that nobody tracks or claims back",
+        "At year end: a bag of receipts dumped on the CA; an income tax return built from memory; finding out late they crossed the ₹20 lakh GST registration limit",
+        "When life asks for proof: a bank, landlord or visa office wants proof of income and nothing is ready"
+      ],
+      "responsibilities": [
+        "Confirm every extracted field before it is saved",
+        "Keep their own details right: name, state, GSTIN, UPI ID",
+        "Decide when to send a reminder, and press send in WhatsApp",
+        "Mark an invoice paid when money arrives outside a tracked link"
+      ],
+      "access_level": "full (own workspace only)",
+      "admin_level": "none",
+      "languages": [
+        "en",
+        "hi",
+        "kn",
+        "ml"
+      ],
+      "device_context": "phone browser first; laptop works"
+    },
+    {
+      "name": "customer",
+      "archetype": "payer",
+      "description": "The owner's client. Gets the invoice link on WhatsApp. No account, no app.",
+      "goals": [
+        "See what they owe and what it is for",
+        "Pay in one tap from a UPI app, or by Pine Labs link",
+        "Keep a proper GST invoice for their own books (and input credit, if they are GST-registered)"
+      ],
+      "pain_points": [
+        "Unclear invoices with no UPI details, so paying means asking for bank details"
+      ],
+      "responsibilities": [
+        "Pay"
+      ],
+      "access_level": "read one invoice by its public link",
+      "admin_level": "none",
+      "device_context": "phone, arriving from WhatsApp"
+    },
+    {
+      "name": "operator",
+      "archetype": "team",
+      "description": "Rahul, Chetan and Shaheen running the build and the user hunt. Rahul builds; Chetan owns the 20 users and voices Kannada; Shaheen does deck content and the demo video from the afternoon.",
+      "goals": [
+        "20 real users outside the team by 19:30",
+        "A live Kannada invoice and a snapped bill on stage",
+        "The '₹X invoiced today' number for the traction slide"
+      ],
+      "pain_points": [
+        "Venue wifi, few sockets, a loud hall for a voice demo"
+      ],
+      "responsibilities": [
+        "Watch /stats and report the count every 30 minutes (Chetan)",
+        "Fix what users break (Rahul)"
+      ],
+      "access_level": "public stats; their own test workspaces like any owner",
+      "admin_level": "none in-app; database access out of band",
+      "device_context": "laptops and phones at the venue"
+    },
+    {
+      "name": "judge",
+      "archetype": "evaluator",
+      "description": "AI Builder's Day judges and Pine Labs sponsors. See the demo, the deck and /stats.",
+      "goals": [
+        "Evidence of real use by people outside the team",
+        "Fit to the AI for Finance track and use of sponsor tech (Pine Labs, AgenticOrg)",
+        "A credible path from today's build to a business"
+      ],
+      "pain_points": [],
+      "responsibilities": [],
+      "access_level": "public stats, public invoices they are shown, the landing page",
+      "admin_level": "none",
+      "device_context": "stage screen, own phone"
+    }
+  ],
+  "agents": [
+    {
+      "id": "AGT-SCRIBE",
+      "name": "ElevenLabs Scribe",
+      "role": "Speech to text with language detection",
+      "inputs": "Recorded audio (MediaRecorder webm)",
+      "outputs": "Transcript and detected language code",
+      "autonomy": "none; output feeds the extractor",
+      "human_gate": "The transcript is shown with the confirm form",
+      "fallback": "Type the invoice instead; a failed language is cut (SPEC cut order 3)",
+      "config": "ELEVENLABS_API_KEY, ELEVENLABS_STT_MODEL (default scribe_v1)"
+    },
+    {
+      "id": "AGT-EXTRACT",
+      "name": "Invoice extractor (Claude)",
+      "role": "Transcript to invoice fields",
+      "inputs": "Transcript, the owner's coded services",
+      "outputs": "InvoiceExtract: customer, customer state, lines (description, quantity, rate, service number), GST rate, due in days or due date",
+      "autonomy": "proposes only",
+      "human_gate": "Invoice confirm form",
+      "rules": [
+        "BR-SH-002"
+      ],
+      "config": "ANTHROPIC_API_KEY; model claude-opus-5-5"
+    },
+    {
+      "id": "AGT-BILLREAD",
+      "name": "Bill reader (Claude vision)",
+      "role": "Photo of a bill to bill fields",
+      "inputs": "One image",
+      "outputs": "BillExtract: seller, seller GSTIN, seller state, date, category, subtotal, CGST, SGST, IGST, total",
+      "autonomy": "proposes only",
+      "human_gate": "Bill confirm form",
+      "rules": [
+        "BR-SH-002",
+        "BR-BIL-002"
+      ],
+      "config": "ANTHROPIC_API_KEY"
+    },
+    {
+      "id": "AGT-CODES",
+      "name": "SAC/HSN coder (Claude)",
+      "role": "Match what the owner sells to official GST codes",
+      "inputs": "Service names; the SAC master; an HSN shortlist per item",
+      "outputs": "Kind (service or goods), one code, up to two alternatives",
+      "autonomy": "proposes only; may only choose codes from the lists given",
+      "human_gate": "Your details form",
+      "rules": [
+        "BR-SH-008"
+      ]
+    },
+    {
+      "id": "AGT-COLLECT",
+      "name": "AgenticOrg ar_collections",
+      "role": "Collections: tone from days overdue, Pine Labs payment link, reminder draft",
+      "inputs": "Invoice number, customer, amount, due date, days overdue, invoice URL, UPI link, language",
+      "outputs": "Message, payment link, tone, run id, confidence, tool calls, reasoning trace",
+      "autonomy": "drafts and creates a payment link; never sends",
+      "human_gate": "Reminder preview; owner taps Send on WhatsApp",
+      "fallback": "AGT-REMIND",
+      "config": "AGENTICORG_API_KEY, AGENTICORG_COMPANY_ID, AGENTICORG_BASE_URL; 45 s timeout",
+      "rules": [
+        "intent-invoicing:BR-INV-008 (English only)"
+      ]
+    },
+    {
+      "id": "AGT-REMIND",
+      "name": "Reminder drafter (Claude)",
+      "role": "Fallback reminder draft in the invoice's language",
+      "inputs": "Seller, customer, invoice number, amount, days overdue, link, language",
+      "outputs": "Short WhatsApp message ending with the link",
+      "autonomy": "drafts only",
+      "human_gate": "Reminder preview",
+      "fallback": "A fixed English template",
+      "rules": [
+        "intent-invoicing:BR-INV-008 (English only)"
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "name": "Workspace",
+      "user_value": "My details go on every invoice without me saying them again",
+      "description": "One business. Created on the first visit; its id is the cookie. There is no user table: the workspace is the account.",
+      "phase": "today",
+      "key_fields": [
+        {
+          "name": "id",
+          "type": "id",
+          "required": true,
+          "label": "Workspace id (also the cookie value)"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "label": "Your name or business name"
+        },
+        {
+          "name": "state",
+          "type": "enum:STATES",
+          "required": true,
+          "label": "Supplier state; drives CGST+SGST vs IGST"
+        },
+        {
+          "name": "gstin",
+          "type": "string",
+          "required": false,
+          "label": "GSTIN, checked for shape, state code, check character and match to state"
+        },
+        {
+          "name": "upi_id",
+          "type": "string",
+          "required": true,
+          "label": "UPI ID (name@bank); every invoice's QR pays this"
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true,
+          "label": "Created; '/stats people today' counts these"
+        },
+        {
+          "name": "is_team",
+          "type": "boolean",
+          "required": true,
+          "label": "Team test workspace, left out of /stats (OQ-SH-3)"
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "required": false,
+          "label": "Optional, added after the first save; magic-link sign-in (OQ-SH-5, OQ-SH-6)"
+        }
+      ],
+      "lifecycle_states": [
+        "active"
+      ],
+      "state_machine": {
+        "states": [
+          "none",
+          "active"
+        ],
+        "transitions": [
+          {
+            "from": "none",
+            "to": "active",
+            "trigger": "owner_saves_details",
+            "guard": "name, state, a valid UPI ID and at least one thing sold; GSTIN valid if given",
+            "ears": "WHEN a visitor with no workspace cookie saves Your details THE SYSTEM SHALL create a Workspace and its WorkspaceServices in one transaction AND set the workspace cookie (httpOnly, lax, one year)."
+          },
+          {
+            "from": "active",
+            "to": "active",
+            "trigger": "owner_saves_email",
+            "guard": "at least one invoice or bill saved",
+            "ears": "WHEN the owner adds an email after their first save THE SYSTEM SHALL store it AND allow magic-link sign-in to this workspace from any device."
+          },
+          {
+            "from": "active",
+            "to": "none (this browser)",
+            "trigger": "owner_starts_fresh",
+            "guard": "",
+            "ears": "WHEN someone taps 'Not you? Start fresh' THE SYSTEM SHALL clear the workspace cookie in this browser AND return to setup, leaving the workspace intact."
+          }
+        ]
+      },
+      "mutations": [
+        {
+          "id": "save_details",
+          "user_value": "I'm set up in under a minute, no password",
+          "trigger": "form_submit",
+          "ears": "WHEN the owner submits Your details THE SYSTEM SHALL validate them, create the workspace and redirect home.",
+          "guard": "No existing workspace cookie (/start redirects home if one exists)",
+          "implemented_in": "src/app/actions.ts saveDetails"
+        }
+      ],
+      "not_modeled": [
+        "Editing details after onboarding",
+        "Logo and colours (Month 1)",
+        "Multiple workspaces per person"
+      ]
+    },
+    {
+      "name": "WorkspaceService",
+      "user_value": "When I say 'logo design' the invoice line already has the right SAC code",
+      "description": "Something the business sells, with its official SAC (services) or HSN (goods) code.",
+      "phase": "today",
+      "key_fields": [
+        {
+          "name": "workspace_id",
+          "type": "id",
+          "required": true,
+          "label": "Workspace"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "label": "What you sell, in your words"
+        },
+        {
+          "name": "kind",
+          "type": "enum:service|goods",
+          "required": true,
+          "label": "Service (SAC) or goods (HSN)"
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "required": false,
+          "label": "SAC/HSN code from the official master"
+        },
+        {
+          "name": "code_description",
+          "type": "string",
+          "required": false,
+          "label": "Official description of the code"
+        }
+      ],
+      "lifecycle_states": [
+        "active"
+      ]
+    },
+    {
+      "name": "Customer",
+      "user_value": "I say a name once and it is remembered, with who owes me what",
+      "description": "Someone the owner invoices. Created implicitly on the first invoice to a new name; matched case-insensitively by name after that.",
+      "phase": "today",
+      "key_fields": [
+        {
+          "name": "workspace_id",
+          "type": "id",
+          "required": true,
+          "label": "Workspace"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "label": "Customer name"
+        },
+        {
+          "name": "state",
+          "type": "enum:STATES",
+          "required": false,
+          "label": "Place of supply; unknown means assume the owner's state, shown on the confirm form"
+        },
+        {
+          "name": "gstin",
+          "type": "string",
+          "required": false,
+          "label": "Customer GSTIN, optional on the confirm form, checked, printed on the invoice (OQ-INV-2)"
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "required": false,
+          "label": "WhatsApp number for reminders; updated when a later invoice gives one"
+        }
+      ],
+      "lifecycle_states": [
+        "active"
+      ],
+      "not_modeled": [
+        "Customer list or edit screen",
+        "Merging duplicates"
+      ]
+    }
+  ],
+  "business_rules": [
+    {
+      "rule_id": "BR-SH-001",
+      "description": "Money is integer paise everywhere. Never floats.",
+      "ears": "WHILE handling any amount THE SYSTEM SHALL store and compute it as integer paise, converting to rupees only for display and for AI prompts.",
+      "applies_to": [
+        "Invoice",
+        "InvoiceLine",
+        "Payment",
+        "Bill",
+        "LedgerLine"
+      ],
+      "source": "SPEC.md §Data contract"
+    },
+    {
+      "rule_id": "BR-SH-002",
+      "description": "AI returns fields, never prose. Missing stays empty; the form asks.",
+      "ears": "WHEN an extractor cannot find a field in the input THE SYSTEM SHALL return it empty AND SHALL NOT guess a GST rate or a due date.",
+      "applies_to": [
+        "AGT-EXTRACT",
+        "AGT-BILLREAD"
+      ],
+      "source": "SPEC.md §Voice to invoice, src/lib/claude.ts"
+    },
+    {
+      "rule_id": "BR-SH-003",
+      "description": "Nothing is saved or sent until the person confirms.",
+      "ears": "WHEN an AI output is ready THE SYSTEM SHALL show it as an editable form or preview AND SHALL persist or send nothing until the owner confirms.",
+      "applies_to": [
+        "Invoice",
+        "Bill",
+        "Reminder"
+      ],
+      "enforced_in_ui": true,
+      "source": "SPEC.md §The flow, ADR-004"
+    },
+    {
+      "rule_id": "BR-SH-004",
+      "description": "A money event and its ledger entry are saved together or not at all.",
+      "ears": "WHEN an invoice, payment or bill is saved THE SYSTEM SHALL post its balanced ledger entry in the same database transaction.",
+      "applies_to": [
+        "Invoice",
+        "Payment",
+        "Bill",
+        "LedgerEntry"
+      ],
+      "source": "SPEC.md §Voice to invoice, intent-books.json BR-BKS-001"
+    },
+    {
+      "rule_id": "BR-SH-005",
+      "description": "Every owner read and write is scoped to the cookie's workspace.",
+      "ears": "WHEN an owner-only page or action runs THE SYSTEM SHALL resolve the workspace from the cookie AND SHALL filter every query by that workspace id; with no workspace it SHALL redirect to /start.",
+      "applies_to": [
+        "all owner surfaces"
+      ],
+      "source": "src/lib/workspace.ts requireWorkspace"
+    },
+    {
+      "rule_id": "BR-SH-006",
+      "description": "Four languages in, English on paper, the customer's message in the spoken language.",
+      "ears": "WHEN an invoice is spoken in English, Hindi, Kannada, Malayalam or a mix THE SYSTEM SHALL write line descriptions and names in English (transliterated, company names as spoken) AND SHALL record the detected language on the invoice for the reminder.",
+      "applies_to": [
+        "AGT-EXTRACT",
+        "AGT-COLLECT",
+        "AGT-REMIND"
+      ],
+      "source": "README.md, src/lib/claude.ts"
+    },
+    {
+      "rule_id": "BR-SH-007",
+      "description": "A GSTIN is checked, not just accepted.",
+      "ears": "WHEN the owner enters a GSTIN THE SYSTEM SHALL check its shape, state code and check character AND that the state code matches the chosen state, rejecting it with a reason if not.",
+      "applies_to": [
+        "Workspace"
+      ],
+      "source": "de9e665, src/lib/gstin.ts"
+    },
+    {
+      "rule_id": "BR-SH-008",
+      "description": "SAC/HSN codes come only from the official master.",
+      "ears": "WHEN coding what the owner sells THE SYSTEM SHALL let the model choose only codes present in the supplied SAC list or HSN shortlist, and SHALL leave the code empty if nothing fits.",
+      "applies_to": [
+        "WorkspaceService",
+        "InvoiceLine"
+      ],
+      "source": "de9e665"
+    },
+    {
+      "rule_id": "BR-SH-009",
+      "description": "Dates are IST; the financial year runs April to March.",
+      "ears": "WHEN computing today, a month or a financial year THE SYSTEM SHALL use Asia/Kolkata AND an April-to-March financial year (Oct 2026 is FY 26-27, code 2627).",
+      "applies_to": [
+        "Invoice numbering",
+        "GST this month",
+        "/stats"
+      ],
+      "source": "src/lib/dates.ts, src/lib/gst.ts fyCode"
+    },
+    {
+      "rule_id": "BR-SH-010",
+      "description": "No receipt images or voice audio are kept.",
+      "ears": "WHEN a bill photo or a voice recording has been read THE SYSTEM SHALL discard it and keep only the confirmed fields (and, for voice, the transcript).",
+      "applies_to": [
+        "Bill",
+        "Invoice"
+      ],
+      "source": "ADR-009"
+    }
+  ],
+  "constraints": [
+    {
+      "constraint": "Built in one 12-hour day at the venue; no app code before 09:00 unless organisers allow it.",
+      "type": "time",
+      "phase": "today"
+    },
+    {
+      "constraint": "No login wall: the first visit must reach a working invoice in about a minute.",
+      "type": "adoption",
+      "phase": "today"
+    },
+    {
+      "constraint": "Must work on a phone browser over venue wifi or a hotspot.",
+      "type": "platform",
+      "phase": "today"
+    },
+    {
+      "constraint": "Voice must survive a loud hall: headset or clip mic for the demo; amounts shown large on confirm.",
+      "type": "environment",
+      "phase": "today"
+    },
+    {
+      "constraint": "Checkpoint 13:00: a spoken invoice saves with a balanced ledger entry on the live URL, or cut now.",
+      "type": "schedule",
+      "phase": "today"
+    },
+    {
+      "constraint": "Checkpoint 15:30: the public invoice link works on a phone, or nothing else is built until it does.",
+      "type": "schedule",
+      "phase": "today"
+    },
+    {
+      "constraint": "Anthropic credit of roughly ₹2,000 to ₹4,000 must cover 20+ people talking at once.",
+      "type": "cost",
+      "phase": "today"
+    },
+    {
+      "constraint": "Invoice numbers are at most 16 characters (GST rule).",
+      "type": "regulatory",
+      "phase": "today"
+    }
+  ],
+  "cut_order": {
+    "description": "Cut from the top when behind. Ranks mirror SPEC.md §Cut order; capabilities in entitlements.json carry cut_rank.",
+    "order": [
+      {
+        "rank": 1,
+        "item": "Snap a bill",
+        "note": "Built 15:00 to 16:00 only if the 13:00 checkpoint passed. If cut, pitch falls back to invoices plus books; bills move to Month 1."
+      },
+      {
+        "rank": 2,
+        "item": "Pine Labs",
+        "note": "UPI stays."
+      },
+      {
+        "rank": 3,
+        "item": "Malayalam, then Hindi",
+        "note": "Keep English and Kannada."
+      },
+      {
+        "rank": 4,
+        "item": "GST this month view",
+        "note": "The ledger still records it."
+      },
+      {
+        "rank": 5,
+        "item": "Editing an invoice after it is saved",
+        "note": "Not built."
+      }
+    ],
+    "never_cut": [
+      "Voice",
+      "The confirm step",
+      "The public invoice with UPI",
+      "The ledger posting",
+      "/stats"
+    ]
+  },
+  "open_questions": [
+    {
+      "id": "OQ-SH-1",
+      "plain": "What is the product called?",
+      "question": "The page title says 'Say it, get paid'; 'Enatel' is the design system brought in at 866ce6a. Chetan was to bring five names by 10:30 and Rahul to pick by 11:00. What is the name, and does it go on the invoice footer, the landing page and the domain?",
+      "raised_by_role": "product-owner",
+      "evidence": [
+        "src/app/layout.tsx title",
+        "TODO.md 08:00 to 11:00",
+        "866ce6a"
+      ],
+      "status": "resolved",
+      "resolution": "The product is called 'Say it, get paid'.",
+      "resolved_by": "Rahul",
+      "resolved_date": "2026-10-24"
+    },
+    {
+      "id": "OQ-SH-2",
+      "plain": "Can someone without a GSTIN charge GST?",
+      "question": "Workspace GSTIN is optional, but the invoice applies the spoken GST rate whatever the workspace's registration. An unregistered supplier cannot collect GST and should issue a bill of supply with no tax. Should a workspace with no GSTIN have GST forced to 0, the document titled 'Bill of supply', and the GST this month view hidden? Most event users won't have a GSTIN.",
+      "raised_by_role": "product-owner",
+      "evidence": [
+        "src/lib/schemas.ts DetailsForm gstin optional",
+        "src/app/actions.ts createInvoice computes GST regardless"
+      ],
+      "status": "resolved",
+      "resolution": "No GSTIN, no GST. A workspace without a valid GSTIN invoices at 0% GST, the document is titled 'Bill of supply', and the GST this month view is hidden.",
+      "resolved_by": "Rahul",
+      "resolved_date": "2026-10-24"
+    },
+    {
+      "id": "OQ-SH-3",
+      "plain": "How do we count 20 real users outside the team?",
+      "question": "/stats 'People' counts workspaces created today, so the team's own test workspaces and any second device count too, and '₹ invoiced today' includes test invoices. The organisers' counting method is still an open NEEDS.md question. Do we exclude operator workspaces (a flag, or an allowlist of ids), and what counts as 'using' it: a workspace, or a saved invoice or bill?",
+      "raised_by_role": "operator",
+      "evidence": [
+        "src/lib/books.ts statsToday",
+        "NEEDS.md §Questions for the organisers"
+      ],
+      "status": "resolved",
+      "resolution": "Team test workspaces are flagged and /stats leaves them out. A person counts only once they save an invoice or a bill, not on sign-up.",
+      "resolved_by": "Rahul",
+      "resolved_date": "2026-10-24"
+    },
+    {
+      "id": "OQ-SH-4",
+      "plain": "What happens when the demo phone is shared?",
+      "question": "One cookie per browser means one workspace per device. If a judge or passer-by tries it on Chetan's phone, their invoice lands in Chetan's books. Do we need a 'start fresh' or 'this isn't me' action today, or do we tell people to use their own phone?",
+      "raised_by_role": "operator",
+      "evidence": [
+        "ADR-002"
+      ],
+      "status": "resolved",
+      "resolution": "Add a small 'Not you? Start fresh' link: it clears this browser's workspace cookie and returns to setup. The old workspace stays in the database.",
+      "resolved_by": "Rahul",
+      "resolved_date": "2026-10-24"
+    },
+    {
+      "id": "OQ-SH-5",
+      "plain": "Do we add any way to keep your books today?",
+      "question": "SPEC says 'save with email later if there is time'; ROADMAP says phone OTP in Month 1. Is anything shipped today, or is losing the cookie accepted for the event?",
+      "raised_by_role": "product-owner",
+      "evidence": [
+        "SPEC.md §The flow step 1",
+        "ROADMAP.md Month 1"
+      ],
+      "status": "resolved",
+      "resolution": "Ship 'Save with email' today: optional email, magic link back to the same workspace on any device. Phone OTP stays Month 1. Placement in OQ-SH-6.",
+      "resolved_by": "Rahul",
+      "resolved_date": "2026-10-24"
+    },
+    {
+      "id": "OQ-SH-6",
+      "plain": "Where does 'Save with email' appear?",
+      "question": "Placement of the save-with-email prompt, and whether it dents the no-sign-up promise.",
+      "raised_by_role": "product-owner",
+      "evidence": [
+        "OQ-SH-5 resolution"
+      ],
+      "status": "resolved",
+      "resolution": "After the first saved invoice or bill: 'Keep your books? Add your email.' Skippable. A magic link logs back into the same workspace on any device. Sign-up itself stays email-free.",
+      "resolved_by": "Rahul",
+      "resolved_date": "2026-10-24"
+    }
+  ],
+  "exclusions": [
+    {
+      "id": "E-SH-001",
+      "description": "Phone OTP sign-in. (Save with email ships today; see OQ-SH-5.)",
+      "treatment": "Roadmap Month 1.",
+      "source": "ROADMAP.md"
+    },
+    {
+      "id": "E-SH-002",
+      "description": "More than one person per workspace; roles; inviting a CA.",
+      "treatment": "CA hand-off is Month 3; no team model planned before then.",
+      "source": "ROADMAP.md"
+    },
+    {
+      "id": "E-SH-003",
+      "description": "Tamil, Telugu, Marathi and Bengali.",
+      "treatment": "Roadmap Month 1.",
+      "source": "ROADMAP.md"
+    },
+    {
+      "id": "E-SH-004",
+      "description": "Your logo and colours on invoices.",
+      "treatment": "Roadmap Month 1.",
+      "source": "ROADMAP.md"
+    },
+    {
+      "id": "E-SH-005",
+      "description": "Editing workspace details after onboarding.",
+      "treatment": "Not planned for today.",
+      "source": "src/app/start/page.tsx"
+    },
+    {
+      "id": "E-SH-006",
+      "description": "Asking your books out loud ('How much has Ravi Traders paid me this year?').",
+      "treatment": "Roadmap Month 2.",
+      "source": "ROADMAP.md"
+    }
+  ],
+  "risk_allocation": [
+    {
+      "risk": "Scribe mishears amounts or company names in Hindi, Kannada or Malayalam.",
+      "owner": "Rahul",
+      "likelihood": "medium",
+      "mitigation": "Night-before test, 3 recordings per language, cut any language under 2 of 3. Amounts shown large and editable on confirm.",
+      "source": "TODO.md §Checks before building"
+    },
+    {
+      "risk": "A login wall or slow first run loses users at 16:00.",
+      "owner": "Rahul",
+      "likelihood": "high if built",
+      "mitigation": "No sign-up (ADR-002); landing page then a one-screen details form.",
+      "source": "SPEC.md"
+    },
+    {
+      "risk": "Pine Labs test keys are not available.",
+      "owner": "Chetan",
+      "likelihood": "medium",
+      "mitigation": "UPI QR on every invoice; Pine Labs mentor at 09:30; AgenticOrg agent as an alternative path to a Pine Labs link.",
+      "source": "NEEDS.md"
+    },
+    {
+      "risk": "AgenticOrg agent is slow, down or returns an odd shape on stage.",
+      "owner": "Rahul",
+      "likelihood": "medium",
+      "mitigation": "45 s timeout, shape-tolerant parsing, Claude fallback, then a fixed template.",
+      "source": "src/app/api/chase/route.ts"
+    },
+    {
+      "risk": "Fewer than 20 people outside the team use it.",
+      "owner": "Chetan",
+      "likelihood": "medium",
+      "mitigation": "40 lined up the night before, personal messages at 16:00, snap-a-lunch-bill as the easy way in, work the room.",
+      "source": "BRIEF-chetan.md"
+    },
+    {
+      "risk": "Losing the cookie loses the books.",
+      "owner": "Rahul",
+      "likelihood": "low during the event, high after",
+      "mitigation": "Save with email after the first save (magic link); phone OTP in Month 1.",
+      "source": "ADR-002"
+    },
+    {
+      "risk": "Looks like Chat2Cash, which already won in this city.",
+      "owner": "Rahul",
+      "likelihood": "medium",
+      "mitigation": "Lead with Kannada voice, real double entry, Pine Labs, and invoice design.",
+      "source": "README.md §Why this one"
+    },
+    {
+      "risk": "Unregistered users issue GST invoices they're not allowed to.",
+      "owner": "Rahul",
+      "likelihood": "high",
+      "mitigation": "Decided (OQ-SH-2): no GSTIN means 0% GST and a 'Bill of supply'.",
+      "source": "OQ-SH-2"
+    }
+  ],
+  "technical_requirements": {
+    "stack": "Next.js App Router, TypeScript, Tailwind, shadcn, zod for every extract and form, server components by default, server actions for writes.",
+    "data": "Postgres via DATABASE_URL (postgres.js). Schema in db/schema.sql. Money as bigint paise.",
+    "api": [
+      "POST /api/transcribe: audio → { text, language }",
+      "POST /api/extract: transcript → InvoiceExtract",
+      "POST /api/read-bill: image → BillExtract",
+      "POST /api/codes: services → SAC/HSN options",
+      "POST /api/chase: invoiceId → reminder draft and payment link",
+      "Server actions: saveDetails, createInvoice, markPaid, createBill"
+    ],
+    "integrations": [
+      "ElevenLabs Scribe (speech to text)",
+      "Anthropic Claude claude-opus-5-5 (extract, read bill, codes, reminder)",
+      "AgenticOrg by Pine Labs, ar_collections agent (agenticorg-sdk)",
+      "UPI deep link and QR (no gateway)",
+      "WhatsApp via wa.me link"
+    ],
+    "infra": "Vercel (see .vercelignore); hosted Postgres.",
+    "performance": "AI routes allow up to 60 s (maxDuration); the collections agent times out at 45 s.",
+    "security": "Workspace cookie httpOnly, sameSite lax, secure in production, one year. Public invoice slugs are 6 random bytes, base64url. Workspace id format checked before use.",
+    "testing": "None automated today, deliberately. The 13:00 and 15:30 checkpoints are the tests."
+  }
+}

@@ -17,6 +17,7 @@ Rules:
 - If one amount is said for the whole job, return one line with quantity 1.
 - "due in 7 days" → due_in_days 7. A named date → due_date as YYYY-MM-DD, assuming the next such date after today.
 - customer_state only if a state or city is said (map a city to its state, e.g. Bengaluru → Karnataka).
+- customer_gstin only if the customer's GSTIN is said: 15 characters, letters uppercase, no spaces. Otherwise null. Never make one up.
 - service_number: the number of the seller's service that the line is for, from the list given. null if none fits.`
 
 export async function extractInvoice(transcript: string, today: string, services: string[] = []) {
@@ -73,8 +74,8 @@ const LANGUAGES: Record<string, string> = {
 
 export const languageName = (code: string | null) => (code && LANGUAGES[code.toLowerCase()]) || 'English'
 
-// Fallback when the collections agent is unavailable: a reminder in the
-// language the invoice was spoken in.
+// Fallback when the collections agent is unavailable. Always English, whatever
+// language the invoice was spoken in (OQ-INV-7).
 export async function draftReminder(o: {
   sellerName: string
   customerName: string
@@ -82,7 +83,6 @@ export async function draftReminder(o: {
   amount: string
   daysOverdue: number
   link: string
-  language: string
 }) {
   const tone =
     o.daysOverdue <= 0 ? 'a friendly heads-up' : o.daysOverdue <= 14 ? 'a polite reminder' : 'firm but courteous'
@@ -95,7 +95,7 @@ export async function draftReminder(o: {
     messages: [
       {
         role: 'user',
-        content: `Write ${tone} in ${o.language}, from ${o.sellerName} to ${o.customerName}, for invoice ${o.invoiceNumber} of ${o.amount}${o.daysOverdue > 0 ? `, ${o.daysOverdue} days overdue` : ''}. End with this link on its own line: ${o.link}`,
+        content: `Write ${tone} in English, from ${o.sellerName} to ${o.customerName}, for invoice ${o.invoiceNumber} of ${o.amount}${o.daysOverdue > 0 ? `, ${o.daysOverdue} days overdue` : ''}. End with this link on its own line: ${o.link}`,
       },
     ],
   })

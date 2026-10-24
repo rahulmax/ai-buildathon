@@ -1,3 +1,5 @@
+import { isGstin } from './gstin'
+
 export const GST_RATES = [0, 5, 12, 18, 28] as const
 
 export const STATES = [
@@ -35,7 +37,10 @@ export function totals(lines: LineInput[], supplierState: string, placeOfSupply:
   return { lines: priced, subtotal, gst, ...split, total: subtotal + gst }
 }
 
-export { isGstin } from './gstin'
+export { isGstin }
+
+// No GSTIN, no GST: an unregistered seller issues a bill of supply at 0%.
+export const canChargeGst = (gstin: string | null | undefined) => Boolean(gstin && isGstin(gstin))
 
 // Financial year runs April to March. Oct 2026 is FY 26-27, written 2627.
 export function fyCode(date = new Date()) {

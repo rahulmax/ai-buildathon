@@ -1,10 +1,12 @@
 import { readBill } from '@/lib/claude'
+import { currentWorkspace } from '@/lib/workspace'
 
 export const maxDuration = 60
 
 const TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const
 
 export async function POST(req: Request) {
+  if (!(await currentWorkspace())) return Response.json({ error: 'No workspace' }, { status: 401 })
   const form = await req.formData()
   const photo = form.get('photo')
   if (!(photo instanceof Blob) || photo.size === 0) {

@@ -136,3 +136,58 @@ create constraint trigger ledger_line_balanced
   after insert or update on ledger_line
   deferrable initially deferred
   for each row execute function ledger_entry_balanced();
+
+-- 2026-10-24: decisions from the intent model (intent/*.json). Idempotent, runs every cold start.
+
+-- Team test workspaces stay out of /stats. Email for "Save with email" magic links.
+alter table workspace add column if not exists is_team boolean not null default false;
+alter table workspace add column if not exists email text;
+create unique index if not exists workspace_email_key on workspace (lower(email)) where email is not null;
+
+create table if not exists magic_link (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references workspace(id),
+  token_hash text not null unique,
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+-- Cancel an invoice (a reversal entry posts against it). Pine Labs payment link per invoice.
+alter table invoice drop constraint if exists invoice_status_check;
+alter table invoice add constraint invoice_status_check check (status in ('open', 'paid', 'cancelled'));
+alter table invoice add column if not exists cancelled_at timestamptz;
+alter table invoice add column if not exists pay_link text;
+alter table invoice add column if not exists pay_order_id text;
+
+-- Paid less TDS; gateway reference for webhook payments.
+alter table payment add column if not exists tds bigint not null default 0;
+alter table payment add column if not exists gateway_ref text;
+create unique index if not exists payment_gateway_ref_key on payment (gateway_ref) where gateway_ref is not null;
+
+-- Gateway payout: money moves from pine_labs_clearing to bank, less the fee.
+create table if not exists settlement (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references workspace(id),
+  payment_id uuid not null references payment(id) unique,
+  payout bigint not null,
+  fee bigint not null default 0,
+  settled_at timestamptz not null default now()
+);
+
+-- Bills paid from the bank, or personally (owner_contribution).
+alter table bill add column if not exists paid_from text not null default 'bank';
+alter table bill drop constraint if exists bill_paid_from_check;
+alter table bill add constraint bill_paid_from_check check (paid_from in ('bank', 'personal'));
+
+alter table ledger_line drop constraint if exists ledger_line_account_check;
+alter table ledger_line add constraint ledger_line_account_check check (account in (
+  'receivable', 'revenue', 'bank', 'expenses',
+  'cgst_payable', 'sgst_payable', 'igst_payable',
+  'cgst_input', 'sgst_input', 'igst_input',
+  'pine_labs_clearing', 'tds_receivable', 'owner_contribution'
+));
+
+-- access: a "Save with email" link carries the email to attach once the link is clicked.
+-- Sign-in links leave it null.
+alter table magic_link add column if not exists email text;

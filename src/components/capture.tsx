@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Camera, Keyboard, Loader2, Mic, Square } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -38,6 +39,17 @@ export function Capture({ supplierState, services }: { supplierState: string; se
   const recorder = useRef<MediaRecorder | null>(null)
   const chunks = useRef<Blob[]>([])
   const photoInput = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+
+  // 401: this browser lost its workspace (started fresh in another tab, or the cookie was cleared).
+  function signedOut(res: Response) {
+    if (res.status !== 401) return false
+    toast.error('Your books aren’t open on this browser. Set up again, or sign in.')
+    setStage({ kind: 'idle' })
+    if (photoInput.current) photoInput.current.value = ''
+    router.push('/start')
+    return true
+  }
 
   async function extract(transcript: string, language: string | null) {
     setStage({ kind: 'working', label: 'Making your invoice…' })
@@ -46,6 +58,7 @@ export function Capture({ supplierState, services }: { supplierState: string; se
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ transcript }),
     })
+    if (signedOut(res)) return
     const data = await res.json()
     if (!res.ok) toast.error(data.error)
     setStage({ kind: 'invoice', extract: res.ok ? data : null, transcript, language })
@@ -65,6 +78,7 @@ export function Capture({ supplierState, services }: { supplierState: string; se
         const form = new FormData()
         form.append('audio', audio)
         const res = await fetch('/api/transcribe', { method: 'POST', body: form })
+        if (signedOut(res)) return
         const data = await res.json()
         if (!res.ok || !data.text) {
           toast.error(data.error ?? 'Didn’t catch that. Try again.')
@@ -87,6 +101,7 @@ export function Capture({ supplierState, services }: { supplierState: string; se
     const form = new FormData()
     form.append('photo', await shrink(file), 'bill.jpg')
     const res = await fetch('/api/read-bill', { method: 'POST', body: form })
+    if (signedOut(res)) return
     const data = await res.json()
     if (!res.ok) toast.error(data.error)
     setStage({ kind: 'bill', extract: res.ok ? data : null })

@@ -1,13 +1,16 @@
 'use server'
 
-import { randomBytes } from 'node:crypto'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { claimsGst, findDuplicateBill } from '@/lib/bills'
 import { db } from '@/lib/db'
-import { fyCode, isGstin, totals } from '@/lib/gst'
+import { canChargeGst } from '@/lib/gst'
 import { checkGstin } from '@/lib/gstin'
-import { postEntry } from '@/lib/ledger'
+import { postEntry, type Account } from '@/lib/ledger'
+import type { CustomerOption } from '@/lib/customers'
+import { saveInvoice, workspaceCustomers } from '@/lib/invoices'
+import { cancelPayLink, settleAll, syncPayLink } from '@/lib/pinelabs'
 import { BillForm, DetailsForm, InvoiceForm } from '@/lib/schemas'
 import { COOKIE, requireWorkspace } from '@/lib/workspace'
 import { todayIST } from '@/lib/dates'
@@ -51,94 +54,105 @@ export async function saveDetails(_: ActionState, form: FormData): Promise<Actio
   redirect('/')
 }
 
-const slug = () => randomBytes(6).toString('base64url')
+export type InvoiceFormData = { registered: boolean; customers: CustomerOption[] }
 
-// Save the invoice and post its ledger entry in one transaction.
-export async function createInvoice(input: InvoiceForm) {
+// What the confirm form needs: can this workspace charge GST, and who its customers are.
+export async function loadInvoiceForm(): Promise<InvoiceFormData> {
   const ws = await requireWorkspace()
-  const f = InvoiceForm.parse(input)
-  const t = totals(
-    f.lines.map((l) => ({ description: l.description, quantity: l.quantity, rate: l.rate, gstRate: l.gst_rate })),
-    ws.state,
-    f.customer_state,
-  )
-  const sql = await db()
-
-  const result = await sql.begin(async (tx) => {
-    let [customer] = await tx`
-      select id from customer
-      where workspace_id = ${ws.id} and lower(name) = lower(${f.customer_name}) limit 1`
-    if (!customer) {
-      ;[customer] = await tx`
-        insert into customer (workspace_id, name, state, phone)
-        values (${ws.id}, ${f.customer_name}, ${f.customer_state}, ${f.customer_phone || null})
-        returning id`
-    } else if (f.customer_phone) {
-      await tx`update customer set phone = ${f.customer_phone} where id = ${customer.id}`
-    }
-
-    // Numbers run in sequence per workspace per financial year. Lock to keep them unique.
-    await tx`select pg_advisory_xact_lock(hashtext(${ws.id}))`
-    const fy = fyCode(new Date(`${f.issue_date}T00:00:00Z`))
-    const [{ n }] = await tx`
-      select count(*)::int + 1 as n from invoice
-      where workspace_id = ${ws.id} and number like ${`INV-${fy}-%`}`
-    const number = `INV-${fy}-${String(n).padStart(4, '0')}`
-
-    const [inv] = await tx`
-      insert into invoice (workspace_id, customer_id, number, issue_date, due_date, place_of_supply,
-        subtotal, cgst, sgst, igst, total, public_slug, language, transcript)
-      values (${ws.id}, ${customer.id}, ${number}, ${f.issue_date}, ${f.due_date || null}, ${f.customer_state},
-        ${t.subtotal}, ${t.cgst}, ${t.sgst}, ${t.igst}, ${t.total}, ${slug()}, ${f.language ?? null}, ${f.transcript ?? null})
-      returning id, public_slug`
-
-    for (const [i, l] of t.lines.entries()) {
-      await tx`
-        insert into invoice_line (invoice_id, description, sac_hsn, quantity, rate, amount, gst_rate)
-        values (${inv.id}, ${l.description}, ${f.lines[i].sac_hsn ?? null}, ${l.quantity}, ${l.rate}, ${l.amount}, ${l.gstRate})`
-    }
-
-    await postEntry(tx, {
-      workspaceId: ws.id,
-      date: f.issue_date,
-      memo: `Invoice ${number} to ${f.customer_name}`,
-      sourceType: 'invoice',
-      sourceId: inv.id,
-      lines: [
-        { account: 'receivable', debit: t.total, customerId: customer.id },
-        { account: 'revenue', credit: t.subtotal },
-        { account: 'cgst_payable', credit: t.cgst },
-        { account: 'sgst_payable', credit: t.sgst },
-        { account: 'igst_payable', credit: t.igst },
-      ],
-    })
-    return inv
-  })
-
-  revalidatePath('/', 'layout')
-  return { slug: result.public_slug as string }
+  return { registered: canChargeGst(ws.gstin), customers: await workspaceCustomers(ws.id) }
 }
 
-export async function markPaid(invoiceId: string) {
+// Save the invoice and post its ledger entry in one transaction.
+export async function createInvoice(input: InvoiceForm): Promise<{ slug: string } | { error: string }> {
+  const ws = await requireWorkspace()
+  const res = await saveInvoice(ws, input)
+  if ('error' in res) return res
+  revalidatePath('/', 'layout')
+  return { slug: res.slug }
+}
+
+// Cancel, credit-note style: the invoice stays, marked cancelled, and a reversing
+// entry takes it back out of receivable, revenue and GST. Only before any payment.
+export async function cancelInvoice(invoiceId: string): Promise<{ error?: string }> {
+  const ws = await requireWorkspace()
+  const sql = await db()
+  // A Pine Labs payment the webhook missed would land first, and block the cancel below.
+  const [current] = await sql<{ id: string; status: string; pay_link: string | null }[]>`
+    select id, status, pay_link from invoice where id = ${invoiceId} and workspace_id = ${ws.id}`
+  if (current) await syncPayLink(current)
+  const error = await sql.begin(async (tx) => {
+    const [inv] = await tx`
+      select id, number, status from invoice
+      where id = ${invoiceId} and workspace_id = ${ws.id} for update`
+    if (!inv) return 'Couldn’t find that invoice.'
+    if (inv.status === 'cancelled') return null
+    if (inv.status !== 'open') return 'This invoice is paid, so it can’t be cancelled.'
+    const [{ paid }] = await tx`select exists (select 1 from payment where invoice_id = ${inv.id}) as paid`
+    if (paid) return 'A payment came in on this invoice, so it can’t be cancelled.'
+
+    // Reverse exactly what was posted, not a recomputation.
+    const lines = await tx<{ account: Account; debit: number; credit: number; customer_id: string | null }[]>`
+      select l.account, l.debit, l.credit, l.customer_id
+      from ledger_line l join ledger_entry e on e.id = l.entry_id
+      where e.workspace_id = ${ws.id} and e.source_type = 'invoice' and e.source_id = ${inv.id}`
+    await tx`update invoice set status = 'cancelled', cancelled_at = now() where id = ${inv.id}`
+    await postEntry(tx, {
+      workspaceId: ws.id,
+      date: todayIST(),
+      memo: `Cancelled invoice ${inv.number}`,
+      sourceType: 'reversal',
+      sourceId: inv.id,
+      lines: lines.map((l) => ({ account: l.account, debit: l.credit, credit: l.debit, customerId: l.customer_id })),
+    })
+    return null
+  })
+  if (error) return { error }
+  // The Pine Labs link stops working too, so nobody pays a cancelled invoice.
+  await cancelPayLink(invoiceId)
+  revalidatePath('/', 'layout')
+  return {}
+}
+
+// TDS under 194J: 10% of the fee before GST (OQ-BKS-6).
+const tdsOn = (subtotal: number) => Math.round(subtotal * 0.1)
+
+// What each "Mark as paid" choice means in rupees, for the buttons.
+export async function paymentChoices(invoiceId: string) {
+  const ws = await requireWorkspace()
+  const sql = await db()
+  const [inv] = await sql<{ subtotal: number; total: number; status: string }[]>`
+    select subtotal, total, status from invoice where id = ${invoiceId} and workspace_id = ${ws.id}`
+  if (!inv || inv.status !== 'open') return null
+  const tds = tdsOn(inv.subtotal)
+  return { total: inv.total, tds, lessTds: inv.total - tds }
+}
+
+// Cash or a direct transfer. Paid less TDS: the client keeps 10% of the fee
+// and pays it to the government for us, so it's ours to claim back.
+// Paid and cancelled invoices are left alone.
+export async function markPaid(invoiceId: string, opts: { lessTds?: boolean } = {}) {
   const ws = await requireWorkspace()
   const sql = await db()
   await sql.begin(async (tx) => {
     const [inv] = await tx`
-      select id, number, customer_id, total, status from invoice
+      select id, number, customer_id, subtotal, total, status from invoice
       where id = ${invoiceId} and workspace_id = ${ws.id} for update`
-    if (!inv || inv.status === 'paid') return
+    if (!inv || inv.status !== 'open') return
+    const tds = opts.lessTds ? tdsOn(inv.subtotal) : 0
+    const cash = inv.total - tds
     const [pay] = await tx`
-      insert into payment (invoice_id, amount, method) values (${inv.id}, ${inv.total}, 'manual')
+      insert into payment (invoice_id, amount, tds, method) values (${inv.id}, ${cash}, ${tds}, 'manual')
       returning id`
     await tx`update invoice set status = 'paid' where id = ${inv.id}`
     await postEntry(tx, {
       workspaceId: ws.id,
       date: todayIST(),
-      memo: `Payment for ${inv.number}`,
+      memo: tds ? `Payment for ${inv.number}, less TDS` : `Payment for ${inv.number}`,
       sourceType: 'payment',
       sourceId: pay.id,
       lines: [
-        { account: 'bank', debit: inv.total },
+        { account: 'bank', debit: cash },
+        { account: 'tds_receivable', debit: tds },
         { account: 'receivable', credit: inv.total, customerId: inv.customer_id },
       ],
     })
@@ -146,22 +160,43 @@ export async function markPaid(invoiceId: string) {
   revalidatePath('/', 'layout')
 }
 
-// A bill is treated as already paid. No seller GSTIN, no input credit:
-// the whole total goes to expenses.
-export async function createBill(input: BillForm) {
+// Pine Labs paid out. The owner says what reached the bank; the rest was the fee.
+export async function settlePineLabs(receivedPaise: number): Promise<ActionState> {
+  const ws = await requireWorkspace()
+  const result = await settleAll(ws.id, Math.round(Number(receivedPaise)))
+  if (result.error) return { error: result.error }
+  revalidatePath('/', 'layout')
+}
+
+// A bill is treated as already paid, from the bank or personally. Input GST
+// is claimed only with a valid seller GSTIN, and never on food; otherwise the
+// whole total goes to expenses. A likely repeat isn't saved unless forced.
+export type CreateBillResult = { duplicate: true } | { duplicate: false; claimed: number }
+
+export async function createBill(input: BillForm, opts: { force?: boolean } = {}): Promise<CreateBillResult> {
   const ws = await requireWorkspace()
   const f = BillForm.parse(input)
-  const claimable = Boolean(f.seller_gstin && isGstin(f.seller_gstin))
+  const claimable = claimsGst(f.category, f.seller_gstin)
   const gst = f.cgst + f.sgst + f.igst
   const subtotal = f.total - gst
+  const paidFrom = f.paid_from === 'personal' ? 'owner_contribution' : 'bank'
   const sql = await db()
 
-  await sql.begin(async (tx) => {
+  const result = await sql.begin(async (tx): Promise<CreateBillResult> => {
+    if (!opts.force) {
+      const dup = await findDuplicateBill(tx, {
+        workspaceId: ws.id,
+        sellerName: f.seller_name,
+        billDate: f.bill_date,
+        total: f.total,
+      })
+      if (dup) return { duplicate: true }
+    }
     const [bill] = await tx`
       insert into bill (workspace_id, seller_name, seller_gstin, bill_date, category,
-        subtotal, cgst, sgst, igst, total)
+        subtotal, cgst, sgst, igst, total, paid_from)
       values (${ws.id}, ${f.seller_name}, ${f.seller_gstin || null}, ${f.bill_date}, ${f.category},
-        ${subtotal}, ${f.cgst}, ${f.sgst}, ${f.igst}, ${f.total})
+        ${subtotal}, ${f.cgst}, ${f.sgst}, ${f.igst}, ${f.total}, ${f.paid_from})
       returning id`
     await postEntry(tx, {
       workspaceId: ws.id,
@@ -175,13 +210,15 @@ export async function createBill(input: BillForm) {
             { account: 'cgst_input', debit: f.cgst },
             { account: 'sgst_input', debit: f.sgst },
             { account: 'igst_input', debit: f.igst },
-            { account: 'bank', credit: f.total },
+            { account: paidFrom, credit: f.total },
           ]
         : [
             { account: 'expenses', debit: f.total },
-            { account: 'bank', credit: f.total },
+            { account: paidFrom, credit: f.total },
           ],
     })
+    return { duplicate: false, claimed: claimable ? gst : 0 }
   })
-  revalidatePath('/', 'layout')
+  if (!result.duplicate) revalidatePath('/', 'layout')
+  return result
 }

@@ -1,0 +1,527 @@
+{
+  "meta": {
+    "version": "0.1.0",
+    "created": "2026-10-24",
+    "last_updated": "2026-10-24",
+    "project_name": "Say it, get paid (AI Builder's Day '26)",
+    "bounded_context": "entitlements",
+    "scope_status": "core",
+    "summary": "Who can do what, and what switches a capability on. Registry only, like Synacor's tenant-capabilities.json: domain files own entities and journeys; this file owns gates, capabilities and the access matrix.",
+    "references": [
+      "intent-shared.json",
+      "intent-invoicing.json",
+      "intent-bills.json",
+      "intent-books.json"
+    ]
+  },
+  "gate_kinds": [
+    {
+      "id": "workspace-cookie",
+      "name": "Owner of a workspace",
+      "description": "The request carries a valid workspace cookie. This is the only identity in the product.",
+      "set_by": "saveDetails on first visit",
+      "default_if_unknown": "off: owner pages redirect to /start, owner APIs return 401"
+    },
+    {
+      "id": "public-slug",
+      "name": "Holder of an invoice link",
+      "description": "Knowing an invoice's public slug grants read access to that one invoice. The slug is the secret.",
+      "set_by": "createInvoice",
+      "default_if_unknown": "not found"
+    },
+    {
+      "id": "public",
+      "name": "Anyone",
+      "description": "No gate.",
+      "set_by": "n/a",
+      "default_if_unknown": "on"
+    },
+    {
+      "id": "server-config",
+      "name": "Integration key present",
+      "description": "An env var on the server turns an integration on. Missing keys degrade to a fallback rather than break the flow, except where noted.",
+      "set_by": "operator, in Vercel env",
+      "default_if_unknown": "off, use fallback"
+    },
+    {
+      "id": "registration",
+      "name": "GST registration",
+      "description": "Whether the workspace has a valid GSTIN. Without one: GST is 0, the document is a 'Bill of supply', GST this month is hidden (OQ-SH-2).",
+      "set_by": "owner, in Your details",
+      "default_if_unknown": "unregistered",
+      "build_status": "built"
+    },
+    {
+      "id": "scope-cut",
+      "name": "Cut on the day",
+      "description": "A capability removed under time pressure, per intent-shared cut_order. Never-cut items cannot carry this gate.",
+      "set_by": "Rahul at the 13:00 checkpoint",
+      "default_if_unknown": "on"
+    },
+    {
+      "id": "plan",
+      "name": "Paid plan",
+      "description": "Free vs paid tier. Pricing is to test, not settled. Nothing is gated by plan today.",
+      "set_by": "future billing",
+      "default_if_unknown": "free",
+      "phase": "month-3"
+    },
+    {
+      "id": "email-link",
+      "name": "Magic link",
+      "description": "A signed link sent to the workspace's saved email that sets the workspace cookie on a new device.",
+      "set_by": "owner_saves_email",
+      "default_if_unknown": "off",
+      "build_status": "built"
+    }
+  ],
+  "server_config": [
+    {
+      "id": "DATABASE_URL",
+      "unlocks": "everything",
+      "fallback": "none; the app does not run"
+    },
+    {
+      "id": "ANTHROPIC_API_KEY",
+      "unlocks": "CAP-VOICE extract, CAP-BILLS read, CAP-CODES, CAP-REMIND fallback",
+      "fallback": "type the invoice; fill the bill form by hand; codes left empty"
+    },
+    {
+      "id": "ELEVENLABS_API_KEY",
+      "unlocks": "CAP-VOICE transcription",
+      "fallback": "type the invoice"
+    },
+    {
+      "id": "AGENTICORG_API_KEY + AGENTICORG_COMPANY_ID",
+      "unlocks": "CAP-PINELABS via the ar_collections agent",
+      "fallback": "Claude drafts the reminder with our invoice link and UPI"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "CAP-ONBOARD",
+      "name": "Set up a workspace",
+      "description": "Your details, what you sell with SAC/HSN codes, GSTIN check.",
+      "gated_by": [
+        "public"
+      ],
+      "default_state": "enabled",
+      "never_cut": true,
+      "build_status": "built",
+      "applies_to_entities": [
+        "Workspace",
+        "WorkspaceService"
+      ],
+      "applies_to_screens": [
+        "/start"
+      ]
+    },
+    {
+      "id": "CAP-VOICE",
+      "name": "Say an invoice",
+      "description": "Mic → Scribe → Claude extract → confirm form.",
+      "gated_by": [
+        "workspace-cookie",
+        "server-config"
+      ],
+      "languages": [
+        {
+          "code": "en",
+          "cut_rank": null
+        },
+        {
+          "code": "kn",
+          "cut_rank": null,
+          "note": "Leads the demo; never cut"
+        },
+        {
+          "code": "hi",
+          "cut_rank": 3.2
+        },
+        {
+          "code": "ml",
+          "cut_rank": 3.1
+        }
+      ],
+      "default_state": "enabled",
+      "degraded_ux": "No ElevenLabs key or a mic failure → Type it. A language that failed the night-before test is cut from the copy.",
+      "never_cut": true,
+      "build_status": "built",
+      "applies_to_entities": [
+        "Invoice"
+      ],
+      "applies_to_screens": [
+        "SCR-INV-001",
+        "SCR-INV-002"
+      ]
+    },
+    {
+      "id": "CAP-INVOICE",
+      "name": "Save a GST invoice",
+      "description": "Confirm, number, save, post to the ledger.",
+      "gated_by": [
+        "workspace-cookie"
+      ],
+      "default_state": "enabled",
+      "never_cut": true,
+      "build_status": "built",
+      "applies_to_entities": [
+        "Invoice",
+        "InvoiceLine",
+        "Customer",
+        "LedgerEntry"
+      ],
+      "applies_to_screens": [
+        "SCR-INV-002"
+      ]
+    },
+    {
+      "id": "CAP-PUBLIC-INVOICE",
+      "name": "View and pay an invoice",
+      "description": "The public invoice page with UPI QR and Pay button.",
+      "gated_by": [
+        "public-slug"
+      ],
+      "default_state": "enabled",
+      "never_cut": true,
+      "build_status": "built",
+      "applies_to_entities": [
+        "Invoice"
+      ],
+      "applies_to_screens": [
+        "SCR-INV-003"
+      ]
+    },
+    {
+      "id": "CAP-SHARE",
+      "name": "Send the invoice on WhatsApp",
+      "description": "Owner-only share bar on the public invoice: wa.me with the customer's number, or Copy.",
+      "gated_by": [
+        "workspace-cookie (must own the invoice)"
+      ],
+      "default_state": "enabled",
+      "build_status": "built",
+      "applies_to_screens": [
+        "SCR-INV-003"
+      ]
+    },
+    {
+      "id": "CAP-REMIND",
+      "name": "Send reminder",
+      "description": "Agent or Claude drafts a reminder; owner sends from WhatsApp.",
+      "gated_by": [
+        "workspace-cookie"
+      ],
+      "default_state": "enabled",
+      "degraded_ux": "AgenticOrg missing or failing → Claude draft → fixed template. The owner always gets a message.",
+      "build_status": "built",
+      "applies_to_entities": [
+        "Reminder"
+      ],
+      "applies_to_screens": [
+        "SCR-BKS-001"
+      ]
+    },
+    {
+      "id": "CAP-PINELABS",
+      "name": "Pine Labs payment link",
+      "description": "Pine Labs payment gateway: the one way to pay on the invoice page and in reminders, with a webhook that marks the invoice paid.",
+      "gated_by": [
+        "server-config",
+        "scope-cut"
+      ],
+      "cut_rank": 2,
+      "default_state": "enabled when PINE_LABS_CLIENT_ID and PINE_LABS_CLIENT_SECRET are set",
+      "degraded_ux": "No gateway keys → raw UPI QR to the owner's UPI ID and manual Mark as paid.",
+      "build_status": "built",
+      "notes": "Decided 2026-10-24 (OQ-INV-1). Built 2026-10-24: Plural payment links created direct, a signed webhook (PINE_LABS_WEBHOOK_SECRET) posts to pine_labs_clearing, and a Settled action on Who owes me moves it to bank less the fee. Not yet checked against live Pine Labs: the create-link response shape and ORDER_SETTLED events."
+    },
+    {
+      "id": "CAP-MARK-PAID",
+      "name": "Mark as paid",
+      "gated_by": [
+        "workspace-cookie"
+      ],
+      "default_state": "enabled",
+      "never_cut": true,
+      "build_status": "built",
+      "notes": "Never-cut by implication: it is the ledger posting for payments."
+    },
+    {
+      "id": "CAP-BILLS",
+      "name": "Snap a bill",
+      "gated_by": [
+        "workspace-cookie",
+        "server-config",
+        "scope-cut"
+      ],
+      "cut_rank": 1,
+      "default_state": "enabled (13:00 checkpoint passed)",
+      "degraded_ux": "If cut: no camera button; pitch falls back to invoices plus books; bills move to Month 1.",
+      "build_status": "built",
+      "applies_to_entities": [
+        "Bill"
+      ],
+      "applies_to_screens": [
+        "SCR-BIL-001"
+      ]
+    },
+    {
+      "id": "CAP-OWED",
+      "name": "Who owes me",
+      "gated_by": [
+        "workspace-cookie"
+      ],
+      "default_state": "enabled",
+      "build_status": "built",
+      "applies_to_screens": [
+        "SCR-BKS-001"
+      ]
+    },
+    {
+      "id": "CAP-GST-VIEW",
+      "name": "GST this month",
+      "gated_by": [
+        "workspace-cookie",
+        "scope-cut",
+        "registration (proposed)"
+      ],
+      "cut_rank": 4,
+      "default_state": "enabled",
+      "degraded_ux": "If cut, the ledger still records GST; Home drops the card.",
+      "build_status": "built",
+      "applies_to_screens": [
+        "SCR-BKS-002"
+      ]
+    },
+    {
+      "id": "CAP-BOOKS",
+      "name": "Books: profit, balances, journal",
+      "gated_by": [
+        "workspace-cookie"
+      ],
+      "default_state": "enabled",
+      "build_status": "built",
+      "applies_to_screens": [
+        "SCR-BKS-003"
+      ]
+    },
+    {
+      "id": "CAP-EDIT-INVOICE",
+      "name": "Edit an invoice after saving",
+      "gated_by": [
+        "workspace-cookie",
+        "scope-cut"
+      ],
+      "cut_rank": 5,
+      "default_state": "disabled",
+      "build_status": "not-built"
+    },
+    {
+      "id": "CAP-STATS",
+      "name": "Traction stats",
+      "gated_by": [
+        "public"
+      ],
+      "default_state": "enabled",
+      "never_cut": true,
+      "build_status": "built",
+      "applies_to_screens": [
+        "SCR-BKS-004"
+      ]
+    },
+    {
+      "id": "CAP-LANDING",
+      "name": "Landing page",
+      "gated_by": [
+        "public (shown at / without a workspace cookie)"
+      ],
+      "default_state": "enabled",
+      "build_status": "built"
+    }
+  ],
+  "access_matrix": {
+    "description": "Rows are actors, columns are what they can reach. 'own' means scoped to the cookie's workspace.",
+    "rows": [
+      {
+        "actor": "visitor (no cookie)",
+        "can": [
+          "Landing page",
+          "Set up a workspace",
+          "View any invoice whose link they hold",
+          "/stats"
+        ],
+        "cannot": [
+          "Any owner page (redirect to /start)",
+          "Send reminder (401)"
+        ]
+      },
+      {
+        "actor": "owner",
+        "can": [
+          "Everything a visitor can",
+          "Say or type an invoice (own)",
+          "Snap a bill (own)",
+          "Share and remind on own invoices",
+          "Mark own invoices paid",
+          "Who owes me, GST, Books (own)"
+        ],
+        "cannot": [
+          "See or touch another workspace's data",
+          "Edit or delete anything after saving",
+          "Edit their details after onboarding"
+        ]
+      },
+      {
+        "actor": "customer",
+        "can": [
+          "View the one invoice they were sent",
+          "Pay by UPI or a Pine Labs link"
+        ],
+        "cannot": [
+          "See the owner's other invoices or books",
+          "Confirm their own payment"
+        ]
+      },
+      {
+        "actor": "operator",
+        "can": [
+          "/stats",
+          "Their own test workspaces as owners",
+          "Database, out of band"
+        ],
+        "cannot": [
+          "An in-app admin view (none exists)"
+        ]
+      },
+      {
+        "actor": "judge",
+        "can": [
+          "/stats",
+          "Landing page",
+          "Invoices shown to them",
+          "Try it as an owner on their own phone"
+        ],
+        "cannot": []
+      }
+    ]
+  },
+  "plans": {
+    "status": "to test, not settled",
+    "source": "ROADMAP.md §How it makes money",
+    "tiers": [
+      {
+        "id": "free",
+        "includes": [
+          "Invoices",
+          "Bills",
+          "Who owes me"
+        ],
+        "note": "Free is how people try it."
+      },
+      {
+        "id": "paid",
+        "price": "around ₹199 to ₹499 a month",
+        "includes": [
+          "GST filing",
+          "CA hand-off",
+          "Bank matching",
+          "Year end"
+        ],
+        "phase": "month-3 onward"
+      }
+    ],
+    "other_revenue": [
+      "A share of the payment fee through Pine Labs",
+      "Later: lending against invoices, through a partner"
+    ]
+  },
+  "business_rules": [
+    {
+      "rule_id": "BR-ENT-001",
+      "description": "Owner surfaces fail closed.",
+      "ears": "IF the workspace cookie is missing, malformed or unknown THEN THE SYSTEM SHALL redirect owner pages to /start AND return 401 from owner APIs.",
+      "source": "src/lib/workspace.ts, src/app/api/chase/route.ts"
+    },
+    {
+      "rule_id": "BR-ENT-002",
+      "description": "Integrations fail soft.",
+      "ears": "IF an integration key is missing or the call fails THEN THE SYSTEM SHALL fall back (type it, fill by hand, Claude draft, template) AND SHALL NOT block saving or sharing an invoice.",
+      "source": "src/app/api/chase/route.ts, src/components/capture.tsx"
+    },
+    {
+      "rule_id": "BR-ENT-003",
+      "description": "Never-cut capabilities can't be gated by scope-cut.",
+      "ears": "WHEN cutting scope THE SYSTEM SHALL keep voice, the confirm step, the public invoice with UPI, the ledger posting and /stats.",
+      "source": "SPEC.md §Cut order"
+    },
+    {
+      "rule_id": "BR-ENT-004",
+      "description": "Owner-only controls on a public page check ownership.",
+      "ears": "WHEN the public invoice is viewed by the workspace that owns it THE SYSTEM SHALL show the share bar; for anyone else it SHALL show only the invoice.",
+      "source": "src/app/i/[slug]/page.tsx"
+    },
+    {
+      "rule_id": "BR-ENT-005",
+      "description": "AI routes need a workspace.",
+      "ears": "IF a request to /api/transcribe, /api/extract or /api/read-bill has no valid workspace cookie THEN THE SYSTEM SHALL return 401. /api/codes stays open for onboarding.",
+      "source": "OQ-ENT-1"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "OQ-ENT-1",
+      "plain": "Can strangers burn our AI credit?",
+      "question": "/api/transcribe, /api/extract and /api/read-bill accept requests with no workspace cookie. Anyone who finds them can spend ElevenLabs and Anthropic credit. /api/codes must stay open (onboarding runs before a workspace exists). Require a workspace on the other three, and add a simple per-workspace rate limit?",
+      "raised_by_role": "engineer",
+      "evidence": [
+        "src/app/api/transcribe/route.ts",
+        "src/app/api/extract/route.ts",
+        "src/app/api/read-bill/route.ts"
+      ],
+      "status": "resolved",
+      "resolution": "Require a workspace cookie on /api/transcribe, /api/extract and /api/read-bill. No rate limit for today. /api/codes stays open for onboarding.",
+      "resolved_by": "Rahul",
+      "resolved_date": "2026-10-24"
+    },
+    {
+      "id": "OQ-ENT-2",
+      "plain": "Is /stats fine to leave public?",
+      "question": "It shows only aggregate counts and ₹ invoiced across everyone. Public makes it easy for judges and the team. Any reason to hide it after the event?",
+      "raised_by_role": "product-owner",
+      "evidence": [
+        "src/app/stats/page.tsx"
+      ],
+      "status": "resolved",
+      "resolution": "Public today; it shows only totals. Review after the event.",
+      "resolved_by": "Rahul",
+      "resolved_date": "2026-10-24"
+    },
+    {
+      "id": "OQ-ENT-3",
+      "plain": "Should GST registration gate anything?",
+      "question": "See intent-shared OQ-SH-2. If yes, the 'registration' gate controls the GST rate on invoices, the document title and CAP-GST-VIEW.",
+      "raised_by_role": "product-owner",
+      "evidence": [
+        "gate_kinds.registration"
+      ],
+      "status": "resolved",
+      "resolution": "Yes, per OQ-SH-2: the registration gate sets GST to 0, titles the document 'Bill of supply', and hides CAP-GST-VIEW for workspaces without a valid GSTIN.",
+      "resolved_by": "Rahul",
+      "resolved_date": "2026-10-24"
+    },
+    {
+      "id": "OQ-ENT-4",
+      "plain": "Do invoice links ever expire?",
+      "question": "A public slug works forever and can't be revoked. A wrong invoice sent to the wrong person stays readable. Acceptable until editing and voiding exist?",
+      "raised_by_role": "engineer",
+      "evidence": [
+        "db/schema.sql invoice.public_slug"
+      ],
+      "status": "resolved",
+      "resolution": "Cancel is enough. A cancelled invoice's link shows only 'This invoice was cancelled', with no amounts or details. Links don't otherwise expire.",
+      "resolved_by": "Rahul",
+      "resolved_date": "2026-10-24"
+    }
+  ]
+}
