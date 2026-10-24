@@ -11,7 +11,7 @@ import { STATES } from '@/lib/gst'
 import { checkGstin } from '@/lib/gstin'
 import type { Service } from '@/lib/schemas'
 
-// Comma or new line separates items: "logo design, website design".
+// Comma or new line separates items: "lunch boxes, party catering".
 const splitItems = (s: string) =>
   s
     .split(/[,\n]/)
@@ -95,7 +95,7 @@ export function DetailsForm({ initial }: { initial?: Details }) {
           name="name"
           required
           autoComplete="organization"
-          placeholder="Priya Design Studio"
+          placeholder="Kaveri Caterers"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -116,7 +116,7 @@ export function DetailsForm({ initial }: { initial?: Details }) {
           required
           inputMode="email"
           autoCapitalize="none"
-          placeholder="priya@okhdfcbank"
+          placeholder="kaveri@okicici"
           value={upi}
           onChange={(e) => setUpi(e.target.value)}
         />
@@ -144,7 +144,7 @@ export function DetailsForm({ initial }: { initial?: Details }) {
         <Label htmlFor="sells">What do you sell?</Label>
         <Input
           id="sells"
-          placeholder="Logo design, website development"
+          placeholder="Office lunch boxes, party catering"
           value={sells}
           onChange={(e) => {
             setSells(e.target.value)
