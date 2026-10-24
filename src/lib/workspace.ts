@@ -30,12 +30,17 @@ export async function workspaceById(id: string | undefined): Promise<Workspace |
   return ws ?? null
 }
 
-export type WorkspaceService = { name: string; kind: 'service' | 'goods'; code: string | null }
+export type WorkspaceService = {
+  name: string
+  kind: 'service' | 'goods'
+  code: string | null
+  code_description: string | null
+}
 
 export async function workspaceServices(workspaceId: string) {
   const sql = await db()
   return sql<WorkspaceService[]>`
-    select name, kind, code from workspace_service where workspace_id = ${workspaceId} order by created_at, name`
+    select name, kind, code, code_description from workspace_service where workspace_id = ${workspaceId} order by created_at, name`
 }
 
 // No sign-up: the first visit fills in details, and the cookie is the account.

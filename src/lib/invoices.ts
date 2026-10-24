@@ -125,9 +125,10 @@ export async function saveInvoice(
 
     const [inv] = await tx`
       insert into invoice (workspace_id, customer_id, number, issue_date, due_date, place_of_supply,
-        subtotal, cgst, sgst, igst, total, public_slug, language, transcript)
+        subtotal, cgst, sgst, igst, total, public_slug, language, transcript, seller_name, seller_state, seller_gstin)
       values (${ws.id}, ${customerId}, ${number}, ${f.issue_date}, ${f.due_date || null}, ${placeOfSupply},
-        ${t.subtotal}, ${t.cgst}, ${t.sgst}, ${t.igst}, ${t.total}, ${slug()}, ${f.language ?? null}, ${f.transcript ?? null})
+        ${t.subtotal}, ${t.cgst}, ${t.sgst}, ${t.igst}, ${t.total}, ${slug()}, ${f.language ?? null}, ${f.transcript ?? null},
+        ${ws.name}, ${ws.state}, ${ws.gstin})
       returning id, public_slug, number`
 
     for (const [i, l] of t.lines.entries()) {

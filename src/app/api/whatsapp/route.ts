@@ -1,6 +1,6 @@
 import { after } from 'next/server'
 import { extractInvoice } from '@/lib/claude'
-import { addDays, formatDate, todayIST } from '@/lib/dates'
+import { addDays, DEFAULT_DUE_DAYS, formatDate, todayIST } from '@/lib/dates'
 import { transcribe } from '@/lib/elevenlabs'
 import { canChargeGst, STATES } from '@/lib/gst'
 import { saveInvoice } from '@/lib/invoices'
@@ -86,12 +86,13 @@ async function invoiceFrom(ws: Workspace, transcript: string, language: string |
   const coded = services.filter((s) => s.code)
   const code = (n: number | null) => (n != null ? services[n - 1]?.code : null) ?? (coded.length === 1 ? coded[0].code : null)
   const state = STATES.find((s) => s.toLowerCase() === x.customer_state?.trim().toLowerCase()) ?? ws.state
-  const due = x.due_date ?? (x.due_in_days != null ? addDays(today, x.due_in_days) : '')
+  const due = x.due_date ?? addDays(today, x.due_in_days ?? DEFAULT_DUE_DAYS)
 
   const res = await saveInvoice(ws, {
     customer_name: x.customer_name!,
     customer_state: state,
     customer_gstin: x.customer_gstin ?? '',
+    customer_phone: x.customer_phone ?? undefined,
     issue_date: today,
     due_date: due,
     lines: x.lines.map((l) => ({

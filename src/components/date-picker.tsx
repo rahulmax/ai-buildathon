@@ -29,10 +29,10 @@ function grid(month: string) {
 // "in 7 days", "today", "3 days ago": how far a date is from today, in words.
 function relative(date: string, today: string) {
   const n = daysBetween(today, date)
-  if (n === 0) return 'Today'
-  if (n === 1) return 'Tomorrow'
-  if (n === -1) return 'Yesterday'
-  return n > 0 ? `In ${n} days` : `${-n} days ago`
+  if (n === 0) return 'today'
+  if (n === 1) return 'tomorrow'
+  if (n === -1) return 'yesterday'
+  return n > 0 ? `in ${n} days` : `${-n} days ago`
 }
 
 export function DatePicker({
@@ -124,9 +124,8 @@ export function DatePicker({
       >
         <CalendarDays className="size-4 shrink-0 text-ink-muted" />
         {value ? (
-          <span className="flex min-w-0 flex-col leading-tight">
-            <span className="truncate">{formatDate(value)}</span>
-            <span className="truncate text-xs text-muted-foreground">{relative(value, today)}</span>
+          <span className="truncate">
+            {formatDate(value)} <span className="text-muted-foreground">({relative(value, today)})</span>
           </span>
         ) : (
           <span className="truncate text-ink-muted">{placeholder}</span>

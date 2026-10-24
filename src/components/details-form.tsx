@@ -3,7 +3,7 @@
 import { useActionState, useState } from 'react'
 import { Loader2, X } from 'lucide-react'
 import type { ServiceCodes } from '@/app/api/codes/route'
-import { saveDetails } from '@/app/actions'
+import { saveDetails, updateDetails } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,14 +18,18 @@ const splitItems = (s: string) =>
     .map((x) => x.trim())
     .filter((x) => x.length >= 2)
 
-export function DetailsForm() {
-  const [result, action, pending] = useActionState(saveDetails, undefined)
-  const [name, setName] = useState('')
-  const [state, setState] = useState('Karnataka')
-  const [upi, setUpi] = useState('')
-  const [gstin, setGstin] = useState('')
+export type Details = { name: string; state: string; upi_id: string; gstin: string | null; services: Service[] }
+
+// First visit with no `initial`; Settings passes the saved details to edit them.
+export function DetailsForm({ initial }: { initial?: Details }) {
+  const [result, action, pending] = useActionState(initial ? updateDetails : saveDetails, undefined)
+  const initialSells = initial?.services.map((s) => s.name).join(', ') ?? ''
+  const [name, setName] = useState(initial?.name ?? '')
+  const [state, setState] = useState(initial?.state ?? 'Karnataka')
+  const [upi, setUpi] = useState(initial?.upi_id ?? '')
+  const [gstin, setGstin] = useState(initial?.gstin ?? '')
   const [gstinTouched, setGstinTouched] = useState(false)
-  const [sells, setSells] = useState('')
+  const [sells, setSells] = useState(initialSells)
   const [looking, setLooking] = useState(false)
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [codes, setCodes] = useState<ServiceCodes[] | null>(null)
@@ -53,7 +57,16 @@ export function DetailsForm() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setCodes(data.items)
-      setPicked(Object.fromEntries((data.items as ServiceCodes[]).map((c) => [c.service, c.options[0]?.code ?? ''])))
+      setPicked(
+        Object.fromEntries(
+          (data.items as ServiceCodes[]).map((c) => {
+            // Keep a code picked before, if the lookup still offers it.
+            const saved = initial?.services.find((s) => s.name.toLowerCase() === c.service.toLowerCase())?.code
+            const keep = saved && c.options.some((o) => o.code === saved)
+            return [c.service, keep ? saved : (c.options[0]?.code ?? '')]
+          }),
+        ),
+      )
     } catch (e) {
       setLookupError(e instanceof Error && e.message ? e.message : 'Couldn’t look up codes right now. Try again.')
     } finally {
@@ -61,10 +74,17 @@ export function DetailsForm() {
     }
   }
 
-  const services: Service[] = (codes ?? []).map((c) => {
-    const option = c.options.find((o) => o.code === picked[c.service])
-    return { name: c.service, kind: c.kind, code: option?.code ?? null, code_description: option?.desc ?? null }
-  })
+  // In Settings, an untouched list keeps its saved codes; no lookup needed.
+  const keepServices = Boolean(initial) && !codes && sells === initialSells
+  const services: Service[] = codes
+    ? codes.map((c) => {
+        const option = c.options.find((o) => o.code === picked[c.service])
+        return { name: c.service, kind: c.kind, code: option?.code ?? null, code_description: option?.desc ?? null }
+      })
+    : keepServices && initial
+      ? initial.services
+      : []
+  const saveLabel = initial ? 'Save changes' : 'Start'
 
   return (
     <form action={action} className="flex flex-col gap-5">
@@ -170,12 +190,16 @@ export function DetailsForm() {
       {codes ? (
         <div className="flex gap-2">
           <Button type="submit" size="lg" className="flex-1" disabled={pending || !step1Ready}>
-            {pending ? 'Saving…' : 'Start'}
+            {pending ? 'Saving…' : saveLabel}
           </Button>
           <Button type="button" variant="ghost" size="lg" onClick={() => setCodes(null)}>
             <X /> Change
           </Button>
         </div>
+      ) : keepServices ? (
+        <Button type="submit" size="lg" disabled={pending || !step1Ready}>
+          {pending ? 'Saving…' : saveLabel}
+        </Button>
       ) : (
         <Button type="button" size="lg" disabled={looking} onClick={findCodes}>
           {looking ? (
