@@ -1,13 +1,17 @@
 import { IndianRupee } from 'lucide-react'
 
-export function Mark({ size = 'md' }: { size?: 'md' | 'lg' }) {
+const SIZES = {
+  sm: { box: 'size-7 rounded-lg', icon: 'size-3.5' },
+  md: { box: 'size-10 rounded-xl', icon: 'size-5' },
+  lg: { box: 'size-12 rounded-xl', icon: 'size-6' },
+}
+
+export function Mark({ size = 'md' }: { size?: keyof typeof SIZES }) {
   return (
     <span
-      className={`flex shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lift ${
-        size === 'lg' ? 'size-12' : 'size-10'
-      }`}
+      className={`flex shrink-0 items-center justify-center bg-primary text-primary-foreground shadow-lift ${SIZES[size].box}`}
     >
-      <IndianRupee className={size === 'lg' ? 'size-6' : 'size-5'} strokeWidth={2.25} />
+      <IndianRupee className={SIZES[size].icon} strokeWidth={2.25} />
     </span>
   )
 }

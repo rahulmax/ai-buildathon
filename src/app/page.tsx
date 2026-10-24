@@ -1,14 +1,17 @@
 import Link from 'next/link'
 import { ChevronRight, FileText, Receipt } from 'lucide-react'
 import { Capture } from '@/components/capture'
+import { Landing } from '@/components/landing'
 import { Mark } from '@/components/mark'
 import { gstForMonth, recentActivity, whoOwesMe } from '@/lib/books'
 import { formatDate, todayIST } from '@/lib/dates'
 import { formatINR } from '@/lib/money'
-import { requireWorkspace, workspaceServices } from '@/lib/workspace'
+import { currentWorkspace, workspaceServices } from '@/lib/workspace'
 
 export default async function Home() {
-  const ws = await requireWorkspace()
+  // No workspace yet: show the landing page. Its button leads to /start.
+  const ws = await currentWorkspace()
+  if (!ws) return <Landing />
   const month = todayIST().slice(0, 7)
   const [owed, gst, recent, services] = await Promise.all([
     whoOwesMe(ws.id),
