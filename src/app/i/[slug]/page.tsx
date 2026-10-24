@@ -1,0 +1,176 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { headers } from 'next/headers'
+import { notFound } from 'next/navigation'
+import { CheckCircle2 } from 'lucide-react'
+import { Share } from '@/components/share'
+import { db } from '@/lib/db'
+import { formatDate } from '@/lib/dates'
+import { formatINR } from '@/lib/money'
+import { qrSvg, upiLink } from '@/lib/upi'
+import { currentWorkspace } from '@/lib/workspace'
+
+type Invoice = {
+  id: string; workspace_id: string; number: string; issue_date: string; due_date: string | null
+  place_of_supply: string; subtotal: number; cgst: number; sgst: number; igst: number; total: number
+  status: string; seller_name: string; seller_state: string; seller_gstin: string | null; upi_id: string
+  customer_name: string; customer_phone: string | null; customer_gstin: string | null
+}
+
+async function load(slug: string) {
+  const sql = await db()
+  const [inv] = await sql<Invoice[]>`
+    select i.id, i.workspace_id, i.number, i.issue_date, i.due_date, i.place_of_supply, i.subtotal,
+      i.cgst, i.sgst, i.igst, i.total, i.status,
+      w.name as seller_name, w.state as seller_state, w.gstin as seller_gstin, w.upi_id,
+      c.name as customer_name, c.phone as customer_phone, c.gstin as customer_gstin
+    from invoice i join workspace w on w.id = i.workspace_id join customer c on c.id = i.customer_id
+    where i.public_slug = ${slug}`
+  if (!inv) return null
+  const lines = await sql<{ description: string; quantity: number; rate: number; amount: number; gst_rate: number }[]>`
+    select description, quantity, rate, amount, gst_rate from invoice_line where invoice_id = ${inv.id}`
+  return { inv, lines }
+}
+
+export async function generateMetadata({ params }: PageProps<'/i/[slug]'>): Promise<Metadata> {
+  const data = await load((await params).slug)
+  if (!data) return {}
+  return { title: `${data.inv.number} from ${data.inv.seller_name} · ${formatINR(data.inv.total)}` }
+}
+
+export default async function InvoicePage({ params, searchParams }: PageProps<'/i/[slug]'>) {
+  const { slug } = await params
+  const { new: isNew } = await searchParams
+  const data = await load(slug)
+  if (!data) notFound()
+  const { inv, lines } = data
+  const owner = (await currentWorkspace())?.id === inv.workspace_id
+  const h = await headers()
+  const url = `${h.get('x-forwarded-proto') ?? (h.get('host')?.startsWith('localhost') ? 'http' : 'https')}://${h.get('host')}/i/${slug}`
+  const paid = inv.status === 'paid'
+  const pay = upiLink({ upiId: inv.upi_id, payee: inv.seller_name, amount: inv.total, note: inv.number })
+  const qr = await qrSvg(pay)
+  const rate = lines[0]?.gst_rate ?? 0
+  const same = lines.every((l) => l.gst_rate === rate)
+
+  return (
+    <main className="shell gap-6 py-6">
+      {owner && (
+        <div className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4">
+          <div className="flex items-center justify-between">
+            <p className="font-medium">{isNew ? 'Invoice ready. Send it.' : 'Your invoice'}</p>
+            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
+              Done
+            </Link>
+          </div>
+          <Share
+            phone={inv.customer_phone}
+            url={url}
+            text={`Hi ${inv.customer_name}, here’s invoice ${inv.number} for ${formatINR(inv.total)}${
+              inv.due_date ? `, due ${formatDate(inv.due_date)}` : ''
+            }. You can pay by UPI from the link:\n{link}\n\nThanks,\n${inv.seller_name}`}
+          />
+        </div>
+      )}
+
+      <article className="flex flex-col gap-6 rounded-2xl border bg-card p-5 shadow-sm">
+        <header className="flex items-start justify-between gap-4">
+          <div className="flex flex-col">
+            <span className="text-lg font-semibold">{inv.seller_name}</span>
+            <span className="text-xs text-muted-foreground">{inv.seller_state}</span>
+            {inv.seller_gstin && <span className="font-mono text-xs text-muted-foreground">GSTIN {inv.seller_gstin}</span>}
+          </div>
+          <div className="flex flex-col items-end text-right">
+            <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              {inv.seller_gstin ? 'Tax invoice' : 'Invoice'}
+            </span>
+            <span className="font-mono text-sm">{inv.number}</span>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Billed to</span>
+            <span className="font-medium">{inv.customer_name}</span>
+            <span className="text-xs text-muted-foreground">Place of supply: {inv.place_of_supply}</span>
+          </div>
+          <div className="flex flex-col items-end text-right">
+            <span className="text-xs text-muted-foreground">Issued</span>
+            <span>{formatDate(inv.issue_date)}</span>
+            {inv.due_date && (
+              <>
+                <span className="mt-1 text-xs text-muted-foreground">Due</span>
+                <span>{formatDate(inv.due_date)}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-xs text-muted-foreground">
+              <th className="pb-2 text-left font-normal">Item</th>
+              <th className="pb-2 text-right font-normal">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((l, i) => (
+              <tr key={i} className="border-b last:border-0">
+                <td className="py-3">
+                  <span className="block">{l.description}</span>
+                  {l.quantity !== 1 && (
+                    <span className="amount text-xs text-muted-foreground">
+                      {l.quantity} × {formatINR(l.rate)}
+                    </span>
+                  )}
+                </td>
+                <td className="amount py-3 text-right align-top">{formatINR(l.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <dl className="flex flex-col gap-1 border-t pt-3 text-sm">
+          <Row label="Subtotal" value={formatINR(inv.subtotal)} />
+          {inv.cgst > 0 && <Row label={`CGST${same ? ` ${rate / 2}%` : ''}`} value={formatINR(inv.cgst)} />}
+          {inv.sgst > 0 && <Row label={`SGST${same ? ` ${rate / 2}%` : ''}`} value={formatINR(inv.sgst)} />}
+          {inv.igst > 0 && <Row label={`IGST${same ? ` ${rate}%` : ''}`} value={formatINR(inv.igst)} />}
+          <div className="mt-2 flex items-baseline justify-between">
+            <dt className="font-medium">Total</dt>
+            <dd className="amount text-3xl font-semibold">{formatINR(inv.total)}</dd>
+          </div>
+        </dl>
+
+        {paid ? (
+          <p className="flex items-center justify-center gap-2 rounded-xl bg-emerald-50 py-4 font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+            <CheckCircle2 className="size-5" /> Paid. Thank you.
+          </p>
+        ) : (
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed p-5">
+            <div className="size-44 [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: qr }} />
+            <p className="text-center text-xs text-muted-foreground">
+              Scan with any UPI app, or tap below on your phone
+              <br />
+              <span className="font-mono">{inv.upi_id}</span>
+            </p>
+            <a
+              href={pay}
+              className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-primary text-base font-medium text-primary-foreground"
+            >
+              Pay {formatINR(inv.total)} by UPI
+            </a>
+          </div>
+        )}
+      </article>
+    </main>
+  )
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between text-muted-foreground">
+      <dt>{label}</dt>
+      <dd className="amount">{value}</dd>
+    </div>
+  )
+}
