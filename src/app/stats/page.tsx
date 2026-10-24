@@ -10,7 +10,7 @@ export default async function StatsPage() {
     { label: 'People', value: s.users },
     { label: 'Invoices', value: s.invoices },
     { label: 'Bills', value: s.bills },
-    { label: 'Agent chases', value: s.chases },
+    { label: 'Reminders sent', value: s.chases },
   ]
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-4 py-10">

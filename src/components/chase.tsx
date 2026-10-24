@@ -36,7 +36,7 @@ export function Chase({ invoiceId }: { invoiceId: string }) {
     })
     const data = await res.json()
     setLoading(false)
-    if (!res.ok) return toast.error(data.error ?? 'The agent couldn’t chase this one.')
+    if (!res.ok) return toast.error(data.error ?? 'Couldn’t write the reminder. Try again.')
     setDraft(data)
     setMessage(data.message)
   }
@@ -47,7 +47,7 @@ export function Chase({ invoiceId }: { invoiceId: string }) {
         <div className="flex gap-2">
           <Button variant="outline" className="h-10 flex-1" onClick={chase} disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : <Bot />}
-            {loading ? 'Agent is working…' : 'Chase'}
+            {loading ? 'Writing reminder…' : 'Send reminder'}
           </Button>
           <Button variant="ghost" className="h-10" disabled={paying} onClick={() => startPaying(() => markPaid(invoiceId))}>
             Mark as paid
