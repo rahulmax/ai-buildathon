@@ -97,6 +97,23 @@
   --color-info-900: rgb(var(--info-900));
   --color-info-950: rgb(var(--info-950));
 
+  /* Chart palette: categorical series in assignment order, plus soft fills. */
+  --color-chart-blue: rgb(var(--chart-blue));
+  --color-chart-coral: rgb(var(--chart-coral));
+  --color-chart-teal: rgb(var(--chart-teal));
+  --color-chart-violet: rgb(var(--chart-violet));
+  --color-chart-pink: rgb(var(--chart-pink));
+  --color-chart-amber: rgb(var(--chart-amber));
+  --color-chart-mist: rgb(var(--chart-mist));
+  --color-chart-blue-soft: rgb(var(--chart-blue-soft));
+  --color-chart-coral-soft: rgb(var(--chart-coral-soft));
+  --color-chart-teal-soft: rgb(var(--chart-teal-soft));
+  --color-chart-violet-soft: rgb(var(--chart-violet-soft));
+  --color-chart-pink-soft: rgb(var(--chart-pink-soft));
+  --color-chart-amber-soft: rgb(var(--chart-amber-soft));
+  --color-chart-mist-soft: rgb(var(--chart-mist-soft));
+  --color-chart-grid: rgb(var(--chart-grid));
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -189,6 +206,21 @@
   --on-brand: 255 255 255;
   --shadow-color: 31 36 33;
   --shadow-strength: 1;
+  --chart-blue: 47 125 225;
+  --chart-coral: 230 97 104;
+  --chart-teal: 15 175 164;
+  --chart-violet: 139 92 246;
+  --chart-pink: 219 59 118;
+  --chart-amber: 239 177 24;
+  --chart-mist: 169 188 198;
+  --chart-blue-soft: 209 226 248;
+  --chart-coral-soft: 250 220 222;
+  --chart-teal-soft: 202 237 235;
+  --chart-violet-soft: 229 219 253;
+  --chart-pink-soft: 247 212 225;
+  --chart-amber-soft: 251 238 204;
+  --chart-mist-soft: 236 240 242;
+  --chart-grid: 236 235 229;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -258,6 +290,21 @@
     --on-brand: 13 15 18;
     --shadow-color: 0 0 0;
     --shadow-strength: 3.4;
+    --chart-blue: 84 151 237;
+    --chart-coral: 236 125 131;
+    --chart-teal: 45 196 185;
+    --chart-violet: 160 124 248;
+    --chart-pink: 229 94 143;
+    --chart-amber: 242 190 61;
+    --chart-mist: 116 132 142;
+    --chart-blue-soft: 26 48 79;
+    --chart-coral-soft: 70 33 37;
+    --chart-teal-soft: 14 54 54;
+    --chart-violet-soft: 46 36 78;
+    --chart-pink-soft: 68 26 43;
+    --chart-amber-soft: 64 50 14;
+    --chart-mist-soft: 36 41 46;
+    --chart-grid: 35 39 45;
   }
 }
 
@@ -319,6 +366,10 @@
 @layer components {
   .shell {
     @apply mx-auto flex w-full max-w-md flex-1 flex-col px-4;
+  }
+  /* Desktop-width pages, like the books. Phone gutters stay the same. */
+  .shell-wide {
+    @apply mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 md:px-8;
   }
   .field {
     @apply h-11 w-full min-w-0 rounded-lg border border-input bg-surface px-3 text-base outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 md:text-sm;

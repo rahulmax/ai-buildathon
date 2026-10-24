@@ -95,6 +95,24 @@ export async function profitForMonth(workspaceId: string, month: string) {
   return { ...totals, profit: totals.revenue - totals.expenses, categories }
 }
 
+// Sales and expenses per month, for the last `months` months up to `month`.
+// Months with nothing in them still come back, as zeros.
+export async function monthlyTotals(workspaceId: string, month: string, months = 6) {
+  const sql = await db()
+  return sql<{ month: string; revenue: number; expenses: number }[]>`
+    select to_char(m, 'YYYY-MM') as month,
+      coalesce(sum(l.credit - l.debit) filter (where l.account = 'revenue'), 0)::bigint as revenue,
+      coalesce(sum(l.debit - l.credit) filter (where l.account = 'expenses'), 0)::bigint as expenses
+    from generate_series(
+      ${`${month}-01`}::date - make_interval(months => ${months - 1}),
+      ${`${month}-01`}::date,
+      interval '1 month') m
+    left join ledger_entry e on e.workspace_id = ${workspaceId} and date_trunc('month', e.date) = m
+    left join ledger_line l on l.entry_id = e.id
+    group by m
+    order by m`
+}
+
 // Every account's balance since the start. Debits and credits total the same,
 // or the books are wrong.
 export async function accountBalances(workspaceId: string) {

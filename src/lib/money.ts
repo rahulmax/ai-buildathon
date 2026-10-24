@@ -10,3 +10,13 @@ export const formatINR = (paise: number) =>
   }).format(paise / 100)
 
 export const rupeesString = (paise: number) => (paise / 100).toFixed(2)
+
+// Short amounts for chart axes: ₹40K, ₹1.35L, ₹3Cr.
+export const formatCompactINR = (paise: number) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    notation: 'compact',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(paise / 100)
