@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { createBill } from '@/app/actions'
+import { DatePicker } from '@/components/date-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -122,7 +123,16 @@ export function BillConfirm({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-2">
           <Label htmlFor="date">Date</Label>
-          <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DatePicker
+            id="date"
+            value={date}
+            onChange={(d) => setDate(d || todayIST())}
+            max={todayIST()}
+            presets={[
+              { label: 'Today', days: 0 },
+              { label: 'Yesterday', days: -1 },
+            ]}
+          />
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="category">Category</Label>
