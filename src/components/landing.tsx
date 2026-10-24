@@ -106,10 +106,7 @@ export async function Landing() {
     <div className="flex flex-1 flex-col overflow-clip">
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-24 px-4 pt-5 pb-10 md:gap-32 md:px-8">
         <header className="rise relative z-10 flex items-center justify-between">
-          <span className="flex items-center gap-2.5 text-xl font-semibold">
-            <Mark />
-            Hisab
-          </span>
+          <Mark />
           <Link href="/start" className={buttonVariants({ variant: 'ghost' })}>
             Start
           </Link>
@@ -245,10 +242,7 @@ export async function Landing() {
         </div>
 
         <footer className="flex flex-col items-start justify-between gap-3 border-t border-line pt-6 text-sm text-ink-muted sm:flex-row sm:items-center">
-          <span className="flex items-center gap-2">
-            <Mark size="sm" />
-            Hisab
-          </span>
+          <Mark size="sm" />
           <span>Made in Bengaluru at AI Builder&rsquo;s Day &rsquo;26.</span>
         </footer>
       </main>

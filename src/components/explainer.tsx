@@ -269,9 +269,6 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
 
           <Screen k="home">
             <header className="flex items-center gap-3">
-              <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lift">
-                <IndianRupee className="size-5" strokeWidth={2.25} />
-              </span>
               <span className="flex flex-col">
                 <span className="font-semibold">Riya Design Studio</span>
                 <span className="text-xs text-muted-foreground">24 Oct 2026</span>

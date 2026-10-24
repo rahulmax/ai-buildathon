@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { ChevronRight, FileText, Receipt, Settings } from 'lucide-react'
 import { Capture } from '@/components/capture'
 import { Landing } from '@/components/landing'
-import { Mark } from '@/components/mark'
 import { SaveEmail } from '@/components/save-email'
 import { StartFresh } from '@/components/start-fresh'
 import { gstForMonth, profitForMonth, recentActivity, whoOwesMe } from '@/lib/books'
@@ -27,7 +26,6 @@ export default async function Home() {
   return (
     <main className="shell stagger gap-6 py-6">
       <header className="rise flex items-center gap-3">
-        <Mark />
         <div className="flex min-w-0 flex-col">
           <p className="truncate font-semibold">{ws.name}</p>
           <p className="text-xs text-muted-foreground">{formatDate(todayIST())}</p>
