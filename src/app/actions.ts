@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { claimsGst, findDuplicateBill } from '@/lib/bills'
 import { db } from '@/lib/db'
 import { fyCode, isGstin, totals } from '@/lib/gst'
 import { checkGstin } from '@/lib/gstin'
@@ -146,22 +147,35 @@ export async function markPaid(invoiceId: string) {
   revalidatePath('/', 'layout')
 }
 
-// A bill is treated as already paid. No seller GSTIN, no input credit:
-// the whole total goes to expenses.
-export async function createBill(input: BillForm) {
+// A bill is treated as already paid, from the bank or personally. Input GST
+// is claimed only with a valid seller GSTIN, and never on food; otherwise the
+// whole total goes to expenses. A likely repeat isn't saved unless forced.
+export type CreateBillResult = { duplicate: true } | { duplicate: false; claimed: number }
+
+export async function createBill(input: BillForm, opts: { force?: boolean } = {}): Promise<CreateBillResult> {
   const ws = await requireWorkspace()
   const f = BillForm.parse(input)
-  const claimable = Boolean(f.seller_gstin && isGstin(f.seller_gstin))
+  const claimable = claimsGst(f.category, f.seller_gstin)
   const gst = f.cgst + f.sgst + f.igst
   const subtotal = f.total - gst
+  const paidFrom = f.paid_from === 'personal' ? 'owner_contribution' : 'bank'
   const sql = await db()
 
-  await sql.begin(async (tx) => {
+  const result = await sql.begin(async (tx): Promise<CreateBillResult> => {
+    if (!opts.force) {
+      const dup = await findDuplicateBill(tx, {
+        workspaceId: ws.id,
+        sellerName: f.seller_name,
+        billDate: f.bill_date,
+        total: f.total,
+      })
+      if (dup) return { duplicate: true }
+    }
     const [bill] = await tx`
       insert into bill (workspace_id, seller_name, seller_gstin, bill_date, category,
-        subtotal, cgst, sgst, igst, total)
+        subtotal, cgst, sgst, igst, total, paid_from)
       values (${ws.id}, ${f.seller_name}, ${f.seller_gstin || null}, ${f.bill_date}, ${f.category},
-        ${subtotal}, ${f.cgst}, ${f.sgst}, ${f.igst}, ${f.total})
+        ${subtotal}, ${f.cgst}, ${f.sgst}, ${f.igst}, ${f.total}, ${f.paid_from})
       returning id`
     await postEntry(tx, {
       workspaceId: ws.id,
@@ -175,13 +189,15 @@ export async function createBill(input: BillForm) {
             { account: 'cgst_input', debit: f.cgst },
             { account: 'sgst_input', debit: f.sgst },
             { account: 'igst_input', debit: f.igst },
-            { account: 'bank', credit: f.total },
+            { account: paidFrom, credit: f.total },
           ]
         : [
             { account: 'expenses', debit: f.total },
-            { account: 'bank', credit: f.total },
+            { account: paidFrom, credit: f.total },
           ],
     })
+    return { duplicate: false, claimed: claimable ? gst : 0 }
   })
-  revalidatePath('/', 'layout')
+  if (!result.duplicate) revalidatePath('/', 'layout')
+  return result
 }
