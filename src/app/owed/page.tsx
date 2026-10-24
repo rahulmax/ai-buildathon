@@ -13,10 +13,10 @@ export default async function OwedPage() {
   const today = todayIST()
 
   return (
-    <main className="shell gap-6 py-6">
+    <main className="shell stagger gap-6 py-6">
       <Back />
-      <div className="flex flex-col gap-1">
-        <h1 className="text-sm text-muted-foreground">Who owes me</h1>
+      <div className="rise flex flex-col gap-1.5">
+        <h1 className="kicker">Who owes me</h1>
         <p className="amount text-4xl font-semibold">{formatINR(owed.total)}</p>
         {owed.customers.length > 0 && (
           <p className="text-sm text-muted-foreground">
@@ -25,16 +25,16 @@ export default async function OwedPage() {
         )}
       </div>
 
-      {owed.invoices.length === 0 && <p className="text-muted-foreground">Nobody owes you anything. Nice.</p>}
+      {owed.invoices.length === 0 && <p className="card rise p-6 text-center text-muted-foreground">Nobody owes you anything. Nice.</p>}
 
-      <ul className="flex flex-col gap-3">
+      <ul className="stagger flex flex-col gap-3">
         {owed.invoices.map((inv) => {
           const late = daysBetween(inv.due_date ?? inv.issue_date, today)
           return (
-            <li key={inv.id} className="flex flex-col gap-3 rounded-2xl border p-4">
+            <li key={inv.id} className="card rise flex flex-col gap-4 p-4">
               <div className="flex items-start justify-between gap-3">
                 <Link href={`/i/${inv.public_slug}`} className="flex flex-col">
-                  <span className="font-medium">{inv.customer_name}</span>
+                  <span className="font-semibold">{inv.customer_name}</span>
                   <span className="text-xs text-muted-foreground">
                     {inv.number} · {inv.due_date ? `due ${formatDate(inv.due_date)}` : `sent ${formatDate(inv.issue_date)}`}
                   </span>

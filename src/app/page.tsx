@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ChevronRight, FileText, Receipt } from 'lucide-react'
 import { Capture } from '@/components/capture'
+import { Mark } from '@/components/mark'
 import { gstForMonth, recentActivity, whoOwesMe } from '@/lib/books'
 import { formatDate, todayIST } from '@/lib/dates'
 import { formatINR } from '@/lib/money'
@@ -17,59 +18,66 @@ export default async function Home() {
   ])
 
   return (
-    <main className="shell gap-6 py-6">
-      <header className="flex items-center justify-between">
-        <p className="font-medium">{ws.name}</p>
+    <main className="shell stagger gap-6 py-6">
+      <header className="rise flex items-center gap-3">
+        <Mark />
+        <div className="flex min-w-0 flex-col">
+          <p className="truncate font-semibold">{ws.name}</p>
+          <p className="text-xs text-muted-foreground">{formatDate(todayIST())}</p>
+        </div>
       </header>
 
-      <Capture supplierState={ws.state} services={services} />
+      <div className="rise">
+        <Capture supplierState={ws.state} services={services} />
+      </div>
 
-      <section className="grid grid-cols-2 gap-3">
-        <Link href="/owed" className="flex flex-col gap-1 rounded-2xl border p-4 hover:bg-muted/50">
-          <span className="text-sm text-muted-foreground">Who owes me</span>
+      <section className="rise grid grid-cols-2 gap-3">
+        <Link href="/owed" className="card lift flex flex-col gap-1.5 p-4">
+          <span className="kicker">Who owes me</span>
           <span className="amount text-2xl font-semibold">{formatINR(owed.total)}</span>
           <span className="text-xs text-muted-foreground">
             {owed.invoices.length} open {owed.invoices.length === 1 ? 'invoice' : 'invoices'}
           </span>
         </Link>
-        <Link href="/gst" className="flex flex-col gap-1 rounded-2xl border p-4 hover:bg-muted/50">
-          <span className="text-sm text-muted-foreground">GST this month</span>
+        <Link href="/gst" className="card lift flex flex-col gap-1.5 p-4">
+          <span className="kicker">GST this month</span>
           <span className="amount text-2xl font-semibold">{formatINR(Math.max(gst.net, 0))}</span>
           <span className="text-xs text-muted-foreground">{gst.net < 0 ? 'Credit carried forward' : 'To pay'}</span>
         </Link>
       </section>
 
       {recent.length > 0 && (
-        <section className="flex flex-col">
-          <h2 className="mb-2 text-sm font-medium text-muted-foreground">Recent</h2>
-          {recent.map((r) => {
-            const row = (
-              <>
-                {r.kind === 'invoice' ? (
-                  <FileText className="size-4 text-muted-foreground" />
-                ) : (
-                  <Receipt className="size-4 text-muted-foreground" />
-                )}
-                <span className="flex flex-1 flex-col">
-                  <span>{r.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {r.kind === 'invoice' ? (r.status === 'paid' ? 'Paid' : 'Invoice') : 'Bill'} · {formatDate(r.date)}
+        <section className="rise flex flex-col gap-2">
+          <h2 className="kicker">Recent</h2>
+          <div className="card overflow-hidden">
+            {recent.map((r) => {
+              const row = (
+                <>
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-700 dark:bg-brand-100">
+                    {r.kind === 'invoice' ? <FileText className="size-4" /> : <Receipt className="size-4" />}
                   </span>
-                </span>
-                <span className="amount">{formatINR(r.amount)}</span>
-                {r.slug && <ChevronRight className="size-4 text-muted-foreground" />}
-              </>
-            )
-            return r.slug ? (
-              <Link key={r.id} href={`/i/${r.slug}`} className="flex items-center gap-3 border-b py-3 last:border-0">
-                {row}
-              </Link>
-            ) : (
-              <div key={r.id} className="flex items-center gap-3 border-b py-3 last:border-0">
-                {row}
-              </div>
-            )
-          })}
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-medium">{r.title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {r.kind === 'invoice' ? (r.status === 'paid' ? 'Paid' : 'Invoice') : 'Bill'} · {formatDate(r.date)}
+                    </span>
+                  </span>
+                  <span className="amount text-sm font-medium">{formatINR(r.amount)}</span>
+                  {r.slug && <ChevronRight className="size-4 text-ink-muted" />}
+                </>
+              )
+              const cls = 'flex items-center gap-3 border-b border-line px-4 py-3 last:border-0'
+              return r.slug ? (
+                <Link key={r.id} href={`/i/${r.slug}`} className={`${cls} transition-colors hover:bg-muted`}>
+                  {row}
+                </Link>
+              ) : (
+                <div key={r.id} className={cls}>
+                  {row}
+                </div>
+              )
+            })}
+          </div>
         </section>
       )}
     </main>

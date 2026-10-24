@@ -113,16 +113,18 @@ export function Capture({ supplierState, services }: { supplierState: string; se
 
   if (stage.kind === 'working') {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border bg-muted/40 py-14 text-muted-foreground">
-        <Loader2 className="size-6 animate-spin" />
-        <p>{stage.label}</p>
+      <div className="card flex flex-col items-center gap-3 py-14 text-muted-foreground">
+        <span className="flex size-14 items-center justify-center rounded-full bg-brand-50 text-brand-700 dark:bg-brand-100">
+          <Loader2 className="size-6 animate-spin" />
+        </span>
+        <p className="font-medium text-ink">{stage.label}</p>
       </div>
     )
   }
 
   if (stage.kind === 'typing') {
     return (
-      <div className="flex flex-col gap-3">
+      <div className="card flex flex-col gap-3 p-4">
         <Textarea
           autoFocus
           rows={4}
@@ -132,10 +134,10 @@ export function Capture({ supplierState, services }: { supplierState: string; se
           className="text-base"
         />
         <div className="flex gap-2">
-          <Button className="h-11 flex-1" disabled={!typed.trim()} onClick={() => extract(typed.trim(), 'en')}>
+          <Button size="lg" className="flex-1" disabled={!typed.trim()} onClick={() => extract(typed.trim(), 'en')}>
             Make invoice
           </Button>
-          <Button variant="ghost" className="h-11" onClick={reset}>
+          <Button variant="ghost" size="lg" onClick={reset}>
             Cancel
           </Button>
         </div>
@@ -149,25 +151,35 @@ export function Capture({ supplierState, services }: { supplierState: string; se
       <button
         type="button"
         onClick={() => (recording ? recorder.current?.stop() : startRecording())}
-        className={`flex flex-col items-center gap-3 rounded-2xl py-10 text-primary-foreground transition-colors ${
-          recording ? 'bg-destructive' : 'bg-primary hover:bg-primary/90'
+        className={`relative flex flex-col items-center gap-4 overflow-hidden rounded-3xl py-10 text-white shadow-lift transition-colors duration-state ease-ambient ${
+          recording ? 'bg-crit-600' : 'bg-brand-700 hover:bg-brand-800 dark:bg-brand-400 dark:hover:bg-brand-300'
         }`}
       >
-        <span className={`flex size-16 items-center justify-center rounded-full bg-white/15 ${recording ? 'animate-pulse' : ''}`}>
-          {recording ? <Square className="size-6" /> : <Mic className="size-7" />}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,rgb(255_255_255/0.18),transparent_60%)]"
+        />
+        <span
+          className={`relative flex size-20 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/25 ${
+            recording ? 'recording' : ''
+          }`}
+        >
+          {recording ? <Square className="size-7 fill-current" /> : <Mic className="size-8" />}
         </span>
-        <span className="text-lg font-medium">{recording ? 'Tap when you’re done' : 'Say an invoice'}</span>
+        <span className="relative text-xl font-semibold tracking-tight">
+          {recording ? 'Listening. Tap when you’re done' : 'Say an invoice'}
+        </span>
         {!recording && (
-          <span className="px-6 text-center text-sm opacity-70">
+          <span className="relative px-8 text-center text-sm text-white/75">
             “Invoice Acme ₹40,000 for landing page design, 18% GST, due in 7 days”
           </span>
         )}
       </button>
       <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" className="h-12" onClick={() => photoInput.current?.click()} disabled={recording}>
+        <Button variant="outline" size="lg" onClick={() => photoInput.current?.click()} disabled={recording}>
           <Camera /> Snap a bill
         </Button>
-        <Button variant="outline" className="h-12" onClick={() => setStage({ kind: 'typing' })} disabled={recording}>
+        <Button variant="outline" size="lg" onClick={() => setStage({ kind: 'typing' })} disabled={recording}>
           <Keyboard /> Type it
         </Button>
       </div>

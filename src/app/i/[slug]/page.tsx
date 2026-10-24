@@ -57,11 +57,11 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
   const same = lines.every((l) => l.gst_rate === rate)
 
   return (
-    <main className="shell gap-6 py-6">
+    <main className="shell stagger gap-6 py-6">
       {owner && (
-        <div className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4">
+        <div className="rise flex flex-col gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-200 dark:bg-brand-100">
           <div className="flex items-center justify-between">
-            <p className="font-medium">{isNew ? 'Invoice ready. Send it.' : 'Your invoice'}</p>
+            <p className="font-semibold text-brand-900">{isNew ? 'Invoice ready. Send it.' : 'Your invoice'}</p>
             <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
               Done
             </Link>
@@ -76,7 +76,8 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
         </div>
       )}
 
-      <article className="flex flex-col gap-6 rounded-2xl border bg-card p-5 shadow-sm">
+      <article className="card rise flex flex-col gap-6 overflow-hidden p-5">
+        <div aria-hidden className="-mx-5 -mt-5 h-1.5 bg-primary" />
         <header className="flex items-start justify-between gap-4">
           <div className="flex flex-col">
             <span className="text-lg font-semibold">{inv.seller_name}</span>
@@ -84,7 +85,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
             {inv.seller_gstin && <span className="font-mono text-xs text-muted-foreground">GSTIN {inv.seller_gstin}</span>}
           </div>
           <div className="flex flex-col items-end text-right">
-            <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            <span className="kicker">
               {inv.seller_gstin ? 'Tax invoice' : 'Invoice'}
             </span>
             <span className="font-mono text-sm">{inv.number}</span>
@@ -93,16 +94,16 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Billed to</span>
+            <span className="kicker">Billed to</span>
             <span className="font-medium">{inv.customer_name}</span>
             <span className="text-xs text-muted-foreground">Place of supply: {inv.place_of_supply}</span>
           </div>
           <div className="flex flex-col items-end text-right">
-            <span className="text-xs text-muted-foreground">Issued</span>
+            <span className="kicker">Issued</span>
             <span>{formatDate(inv.issue_date)}</span>
             {inv.due_date && (
               <>
-                <span className="mt-1 text-xs text-muted-foreground">Due</span>
+                <span className="kicker mt-2">Due</span>
                 <span>{formatDate(inv.due_date)}</span>
               </>
             )}
@@ -111,14 +112,14 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
 
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-xs text-muted-foreground">
-              <th className="pb-2 text-left font-normal">Item</th>
-              <th className="pb-2 text-right font-normal">Amount</th>
+            <tr className="border-b border-line">
+              <th className="kicker pb-2 text-left">Item</th>
+              <th className="kicker pb-2 text-right">Amount</th>
             </tr>
           </thead>
           <tbody>
             {lines.map((l, i) => (
-              <tr key={i} className="border-b last:border-0">
+              <tr key={i} className="border-b border-line last:border-0">
                 <td className="py-3">
                   <span className="block">{l.description}</span>
                   {l.sac_hsn && (
@@ -138,7 +139,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
           </tbody>
         </table>
 
-        <dl className="flex flex-col gap-1 border-t pt-3 text-sm">
+        <dl className="flex flex-col gap-1 rounded-xl border border-line bg-paper p-4 text-sm">
           <Row label="Subtotal" value={formatINR(inv.subtotal)} />
           {inv.cgst > 0 && <Row label={`CGST${same ? ` ${rate / 2}%` : ''}`} value={formatINR(inv.cgst)} />}
           {inv.sgst > 0 && <Row label={`SGST${same ? ` ${rate / 2}%` : ''}`} value={formatINR(inv.sgst)} />}
@@ -150,12 +151,12 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
         </dl>
 
         {paid ? (
-          <p className="flex items-center justify-center gap-2 rounded-xl bg-emerald-50 py-4 font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+          <p className="flex items-center justify-center gap-2 rounded-xl bg-ok-50 py-4 font-semibold text-ok-700 dark:bg-ok-100">
             <CheckCircle2 className="size-5" /> Paid. Thank you.
           </p>
         ) : (
-          <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed p-5">
-            <div className="size-44 [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: qr }} />
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-line bg-paper p-5">
+            <div className="size-48 rounded-xl bg-white p-3 shadow-card [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: qr }} />
             <p className="text-center text-xs text-muted-foreground">
               Scan with any UPI app, or tap below on your phone
               <br />
@@ -163,7 +164,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
             </p>
             <a
               href={pay}
-              className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-primary text-base font-medium text-primary-foreground"
+              className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-primary text-base font-semibold text-primary-foreground shadow-lift transition-colors duration-state ease-ambient hover:bg-brand-800"
             >
               Pay {formatINR(inv.total)} by UPI
             </a>

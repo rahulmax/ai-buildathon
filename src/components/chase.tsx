@@ -45,17 +45,17 @@ export function Chase({ invoiceId }: { invoiceId: string }) {
     <div className="flex flex-col gap-3">
       {!draft && (
         <div className="flex gap-2">
-          <Button variant="outline" className="h-10 flex-1" onClick={chase} disabled={loading}>
+          <Button variant="outline" className="flex-1" onClick={chase} disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : <Bot />}
             {loading ? 'Writing reminder…' : 'Send reminder'}
           </Button>
-          <Button variant="ghost" className="h-10" disabled={paying} onClick={() => startPaying(() => markPaid(invoiceId))}>
+          <Button variant="ghost" disabled={paying} onClick={() => startPaying(() => markPaid(invoiceId))}>
             Mark as paid
           </Button>
         </div>
       )}
       {draft && (
-        <div className="flex flex-col gap-3 rounded-xl bg-muted/50 p-3">
+        <div className="rise flex flex-col gap-3 rounded-xl border border-line bg-paper p-3">
           <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
             <Bot className="size-3.5" />
             {draft.source === 'agenticorg' ? 'Collections agent on AgenticOrg' : 'Drafted by Claude'}
@@ -63,7 +63,7 @@ export function Chase({ invoiceId }: { invoiceId: string }) {
             {draft.agent?.paymentLink && <span>· Pine Labs link made</span>}
             {draft.agent?.toolCalls.length ? <span>· {draft.agent.toolCalls.join(', ')}</span> : null}
           </p>
-          <Textarea rows={5} value={message} onChange={(e) => setMessage(e.target.value)} className="bg-background text-sm" />
+          <Textarea rows={5} value={message} onChange={(e) => setMessage(e.target.value)} className="text-sm" />
           <p className="text-xs text-muted-foreground">Nothing is sent until you tap send.</p>
           <div className="flex gap-2">
             <a

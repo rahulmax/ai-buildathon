@@ -117,7 +117,7 @@ export function DetailsForm() {
           className="font-mono"
         />
         {gstinError && <p className="text-sm text-destructive">{gstinError}</p>}
-        {gstinCheck?.ok && <p className="text-xs text-muted-foreground">Valid GSTIN, registered in {gstinCheck.state}.</p>}
+        {gstinCheck?.ok && <p className="text-xs text-ok-700">Valid GSTIN, registered in {gstinCheck.state}.</p>}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -135,13 +135,15 @@ export function DetailsForm() {
       </div>
 
       {codes && (
-        <div className="flex flex-col gap-4 rounded-2xl border p-4">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">GST codes</p>
+        <div className="rise flex flex-col gap-4 rounded-xl border border-line bg-paper p-4">
+          <p className="kicker">GST codes</p>
           {codes.map((c) => (
             <div key={c.service} className="flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor={`code-${c.service}`}>{c.service}</Label>
-                <span className="text-xs text-muted-foreground">{c.kind === 'service' ? 'SAC' : 'HSN'}</span>
+                <span className="rounded-badge bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-800 dark:bg-brand-100">
+                  {c.kind === 'service' ? 'SAC' : 'HSN'}
+                </span>
               </div>
               <select
                 id={`code-${c.service}`}
@@ -167,15 +169,15 @@ export function DetailsForm() {
 
       {codes ? (
         <div className="flex gap-2">
-          <Button type="submit" size="lg" className="h-12 flex-1 text-base" disabled={pending || !step1Ready}>
+          <Button type="submit" size="lg" className="flex-1" disabled={pending || !step1Ready}>
             {pending ? 'Saving…' : 'Start'}
           </Button>
-          <Button type="button" variant="ghost" size="lg" className="h-12" onClick={() => setCodes(null)}>
+          <Button type="button" variant="ghost" size="lg" onClick={() => setCodes(null)}>
             <X /> Change
           </Button>
         </div>
       ) : (
-        <Button type="button" size="lg" className="h-12 text-base" disabled={looking} onClick={findCodes}>
+        <Button type="button" size="lg" disabled={looking} onClick={findCodes}>
           {looking ? (
             <>
               <Loader2 className="animate-spin" /> Finding GST codes…

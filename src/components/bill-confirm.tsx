@@ -62,8 +62,8 @@ export function BillConfirm({
   }
 
   return (
-    <div className="flex flex-col gap-5 rounded-2xl border p-4">
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Check your bill</p>
+    <div className="card rise flex flex-col gap-5 p-5">
+      <p className="kicker">Check your bill</p>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="seller">Seller</Label>
@@ -113,7 +113,7 @@ export function BillConfirm({
           className="font-mono"
         />
         {gst > 0 && !claimable && (
-          <p className="text-xs text-amber-700 dark:text-amber-400">
+          <p className="text-xs rounded-lg bg-warn-50 px-3 py-2 text-warn-700 dark:bg-warn-100">
             No GSTIN on this bill, so its GST can’t be claimed. The whole amount goes to expenses.
           </p>
         )}
@@ -137,10 +137,10 @@ export function BillConfirm({
       </div>
 
       <div className="flex gap-2">
-        <Button className="h-12 flex-1 text-base" disabled={!ready || pending} onClick={save}>
+        <Button size="lg" className="flex-1" disabled={!ready || pending} onClick={save}>
           {pending ? 'Saving…' : 'Log this bill'}
         </Button>
-        <Button variant="ghost" className="h-12" onClick={onCancel} disabled={pending}>
+        <Button variant="ghost" size="lg" onClick={onCancel} disabled={pending}>
           Cancel
         </Button>
       </div>

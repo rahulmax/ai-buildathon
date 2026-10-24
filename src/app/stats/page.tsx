@@ -14,15 +14,15 @@ export default async function StatsPage() {
   ]
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-8 px-4 py-10">
-      <div className="flex flex-col gap-2">
-        <p className="text-sm text-muted-foreground">{tiles[0].label}</p>
-        <p className="amount text-6xl font-semibold sm:text-7xl">{tiles[0].value}</p>
+      <div className="rise flex flex-col gap-3">
+        <p className="kicker">{tiles[0].label}</p>
+        <p className="amount text-6xl font-semibold text-brand-700 sm:text-8xl">{tiles[0].value}</p>
       </div>
-      <dl className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+      <dl className="stagger grid grid-cols-2 gap-3 sm:grid-cols-4">
         {tiles.slice(1).map((t) => (
-          <div key={t.label} className="flex flex-col gap-1">
-            <dt className="text-sm text-muted-foreground">{t.label}</dt>
-            <dd className="amount text-3xl font-semibold">{t.value}</dd>
+          <div key={t.label} className="card rise flex flex-col gap-1.5 p-5">
+            <dt className="kicker">{t.label}</dt>
+            <dd className="amount text-4xl font-semibold">{t.value}</dd>
           </div>
         ))}
       </dl>

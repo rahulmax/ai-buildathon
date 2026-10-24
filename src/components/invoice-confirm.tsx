@@ -102,10 +102,10 @@ export function InvoiceConfirm({
   }
 
   return (
-    <div className="flex flex-col gap-5 rounded-2xl border p-4">
+    <div className="card rise flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-1">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Check your invoice</p>
-        {transcript && <p className="text-sm text-muted-foreground italic">“{transcript}”</p>}
+        <p className="kicker">Check your invoice</p>
+        {transcript && <p className="rounded-lg border-l-2 border-brand-500 bg-brand-50 px-3 py-2 text-sm text-ink-secondary italic dark:bg-brand-100">“{transcript}”</p>}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -212,7 +212,7 @@ export function InvoiceConfirm({
         <Input id="phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="98765 43210" />
       </div>
 
-      <dl className="flex flex-col gap-1 border-t pt-4 text-sm">
+      <dl className="flex flex-col gap-1 rounded-xl border border-line bg-paper p-4 text-sm">
         <Row label="Subtotal" value={formatINR(t.subtotal)} />
         {t.cgst > 0 && <Row label={`CGST ${Number(gstRate) / 2}%`} value={formatINR(t.cgst)} />}
         {t.sgst > 0 && <Row label={`SGST ${Number(gstRate) / 2}%`} value={formatINR(t.sgst)} />}
@@ -224,10 +224,10 @@ export function InvoiceConfirm({
       </dl>
 
       <div className="flex gap-2">
-        <Button className="h-12 flex-1 text-base" disabled={!ready || pending} onClick={save}>
+        <Button size="lg" className="flex-1" disabled={!ready || pending} onClick={save}>
           {pending ? 'Saving…' : 'Looks right, send it'}
         </Button>
-        <Button variant="ghost" className="h-12" onClick={onCancel} disabled={pending}>
+        <Button variant="ghost" size="lg" onClick={onCancel} disabled={pending}>
           Cancel
         </Button>
       </div>
