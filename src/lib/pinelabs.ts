@@ -11,7 +11,10 @@ import { postEntry } from './ledger'
 
 const BASE_URL = (process.env.PINE_LABS_BASE_URL ?? 'https://pluraluat.v2.pinepg.in').replace(/\/+$/, '')
 
+// PINE_LABS_OFF=1 while Pine Labs is down: every invoice pays by UPI, old links included,
+// and nothing waits on their API. The webhook still records payments that do come through.
 export const pineLabsReady = () =>
+  process.env.PINE_LABS_OFF !== '1' &&
   Boolean(process.env.PINE_LABS_CLIENT_ID && process.env.PINE_LABS_CLIENT_SECRET)
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -112,8 +115,9 @@ export type PayLinkInvoice = {
 // The invoice's Pine Labs link, made on first need and stored. Never throws:
 // null means pay by UPI instead.
 export async function ensurePayLink(inv: PayLinkInvoice, returnUrl: string, timeoutMs = 6_000) {
+  if (!pineLabsReady()) return null
   if (inv.pay_link) return inv.pay_link
-  if (!pineLabsReady() || inv.status !== 'open' || inv.total < 100) return null
+  if (inv.status !== 'open' || inv.total < 100) return null
   try {
     const link = await createPaymentLink({
       invoiceId: inv.id,
