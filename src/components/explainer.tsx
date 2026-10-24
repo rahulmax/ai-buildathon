@@ -36,7 +36,7 @@ const STEPS = [
 ]
 const until = (i: number) => STEPS[i + 1]?.from ?? T
 
-const WORDS = 'Invoice Acme ₹40,000 for landing page design, 18% GST, due in 7 days'.split(' ')
+const WORDS = 'Invoice Acme ₹40,000 for party catering, 5% GST, due in 7 days'.split(' ')
 
 // The stage is drawn at 600×720 and scaled to fit. Screens inside the phone are laid out at
 // the app's real 360px width, then scaled into the 276px screen.
@@ -262,7 +262,7 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
               <IndianRupee className="size-4" />
             </span>
             <span className="flex flex-col">
-              <b className="font-semibold">₹47,200 received</b>
+              <b className="font-semibold">₹42,000 received</b>
               <span className="text-ink-secondary">UPI · from Acme Pvt Ltd</span>
             </span>
           </div>
@@ -270,7 +270,7 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
           <Screen k="home">
             <header className="flex items-center gap-3">
               <span className="flex flex-col">
-                <span className="font-semibold">Riya Design Studio</span>
+                <span className="font-semibold">Kaveri Caterers</span>
                 <span className="text-xs text-muted-foreground">24 Oct 2026</span>
               </span>
             </header>
@@ -289,7 +289,7 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
               </span>
               <span className="relative block h-10 w-full px-8 text-center">
                 <span data-k="hint" className="absolute inset-x-8 text-sm text-white/75">
-                  “Invoice Acme ₹40,000 for landing page design, 18% GST, due in 7 days”
+                  “Invoice Acme ₹40,000 for party catering, 5% GST, due in 7 days”
                 </span>
                 <span data-k="heard" className="absolute inset-x-8 text-sm font-medium opacity-0">
                   {WORDS.map((w, i) => (
@@ -325,14 +325,14 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
               <div data-s className="flex flex-col gap-1.5">
                 <span className="kicker">Check your invoice</span>
                 <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-ink-secondary italic dark:bg-brand-100">
-                  “Invoice Acme ₹40,000 for landing page design, 18% GST, due in 7 days”
+                  “Invoice Acme ₹40,000 for party catering, 5% GST, due in 7 days”
                 </p>
               </div>
               <Field label="Customer">
                 <span className="text-lg">Acme Pvt Ltd</span>
               </Field>
               <Field label="What for">
-                Landing page design <span className="ml-auto text-xs text-ink-muted">SAC 998391</span>
+                Party catering <span className="ml-auto text-xs text-ink-muted">SAC 996334</span>
               </Field>
               <div data-s className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium">Amount</span>
@@ -342,7 +342,7 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
               </div>
               <div data-s className="grid grid-cols-2 gap-3">
                 <Field label="GST rate" bare>
-                  18%
+                  5%
                 </Field>
                 <Field label="Due" bare>
                   31 Oct 2026
@@ -373,7 +373,7 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
               <div className="-mx-[18px] h-1.5 bg-primary" />
               <div className="flex items-start justify-between">
                 <span className="flex flex-col">
-                  <span className="font-semibold">Riya Design Studio</span>
+                  <span className="font-semibold">Kaveri Caterers</span>
                   <span className="text-xs text-muted-foreground">Karnataka</span>
                 </span>
                 <span className="flex flex-col items-end">
@@ -393,7 +393,7 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
               </div>
               <div className="flex items-baseline justify-between">
                 <span className="text-sm font-medium">Total</span>
-                <span className="amount text-3xl font-semibold">₹47,200</span>
+                <span className="amount text-3xl font-semibold">₹42,000</span>
               </div>
               <div className="relative h-[252px] rounded-xl border border-line bg-paper">
                 <div data-k="unpaid" className="absolute inset-0 flex flex-col items-center justify-center gap-3">
@@ -401,7 +401,7 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
                   <span className="text-center text-[11px] text-muted-foreground">
                     Scan with any UPI app
                     <br />
-                    <span className="font-mono">riya.design@okaxis</span>
+                    <span className="font-mono">kaveri@okicici</span>
                   </span>
                 </div>
                 <div data-k="paid" className="absolute inset-0 flex items-center justify-center opacity-0">
@@ -423,9 +423,9 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
           <MessageCircle className="size-3" /> WhatsApp · Acme Pvt Ltd
         </div>
         <div className="rounded-[10px_10px_2px_10px] bg-[#DCF8C6] px-2.5 py-2 text-[#111]">
-          Hi Acme, here’s invoice INV-2627-0007 for ₹47,200, due 31 Oct. You can pay by UPI from the link.
+          Hi Acme, here’s invoice INV-2627-0007 for ₹42,000, due 31 Oct. You can pay by UPI from the link.
           <div className="mt-1.5 rounded-md border-l-[3px] border-[#4B7630] bg-black/5 px-2 py-1">
-            <b className="block text-[11.5px]">INV-2627-0007 from Riya Design Studio · ₹47,200</b>
+            <b className="block text-[11.5px]">INV-2627-0007 from Kaveri Caterers · ₹42,000</b>
             <span className="text-[11px] text-[#555]">Tap to pay by UPI</span>
           </div>
           <div className="mt-0.5 text-right text-[10px] text-[#6b7b6b]">4:12 pm ✓✓</div>
@@ -471,8 +471,8 @@ function Totals() {
     <dl className="flex flex-col gap-1 rounded-xl border border-line bg-paper px-4 py-3.5 text-sm">
       {[
         ['Subtotal', '₹40,000'],
-        ['CGST 9%', '₹3,600'],
-        ['SGST 9%', '₹3,600'],
+        ['CGST 2.5%', '₹1,000'],
+        ['SGST 2.5%', '₹1,000'],
       ].map(([l, v]) => (
         <div key={l} className="flex justify-between text-muted-foreground">
           <dt>{l}</dt>
@@ -481,7 +481,7 @@ function Totals() {
       ))}
       <div className="mt-1.5 flex items-baseline justify-between">
         <dt className="font-medium">Total</dt>
-        <dd className="amount text-[28px] font-semibold">₹47,200</dd>
+        <dd className="amount text-[28px] font-semibold">₹42,000</dd>
       </div>
     </dl>
   )

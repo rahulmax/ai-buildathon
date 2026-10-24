@@ -30,10 +30,10 @@ function Start({ className = '' }: { className?: string }) {
   )
 }
 
-// The demo sentence, and the invoice it becomes. 18% GST in-state splits into CGST and SGST.
+// The demo sentence, and the invoice it becomes. 5% GST in-state splits into CGST and SGST.
 function SpokenInvoice() {
   const subtotal = 40_000_00
-  const half = subtotal * 0.09
+  const half = subtotal * 0.025
   return (
     <div className="card flex w-full max-w-xs flex-col gap-3 p-4">
       <div className="flex items-start gap-2.5">
@@ -41,7 +41,7 @@ function SpokenInvoice() {
           <Mic className="size-3.5" />
         </span>
         <p className="text-sm leading-snug text-ink-secondary">
-          &ldquo;Invoice Acme ₹40,000 for landing page design, 18% GST, due in 7&nbsp;days.&rdquo;
+          &ldquo;Invoice Acme ₹40,000 for party catering, 5% GST, due in 7&nbsp;days.&rdquo;
         </p>
       </div>
       <div className="flex flex-col gap-1.5 border-t border-line pt-3 text-sm">
@@ -49,9 +49,9 @@ function SpokenInvoice() {
           <span className="font-semibold">Acme</span>
           <span className="text-xs text-ink-muted">Due 31 Oct</span>
         </div>
-        <Row label="Landing page design" value={formatINR(subtotal)} />
-        <Row label="CGST 9%" value={formatINR(half)} muted />
-        <Row label="SGST 9%" value={formatINR(half)} muted />
+        <Row label="Party catering" value={formatINR(subtotal)} />
+        <Row label="CGST 2.5%" value={formatINR(half)} muted />
+        <Row label="SGST 2.5%" value={formatINR(half)} muted />
         <div className="mt-1 flex items-baseline justify-between border-t border-line pt-2">
           <span className="font-medium">Total</span>
           <span className="amount text-lg font-semibold">{formatINR(subtotal + 2 * half)}</span>
@@ -104,7 +104,7 @@ function Way({
 
 export async function Landing() {
   // A real, scannable QR for the demo invoice in the How it works phone.
-  const qr = await qrSvg(upiLink({ upiId: 'riya.design@okaxis', payee: 'Riya Design Studio', amount: 47_200_00, note: 'INV-2627-0007' }))
+  const qr = await qrSvg(upiLink({ upiId: 'kaveri@okicici', payee: 'Kaveri Caterers', amount: 42_000_00, note: 'INV-2627-0007' }))
   return (
     <div className="flex flex-1 flex-col overflow-clip">
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-24 px-4 pt-5 pb-10 md:gap-32 md:px-8">
