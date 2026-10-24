@@ -1,10 +1,54 @@
 import 'server-only'
-import { AgenticOrg, type AgentRunResult } from 'agenticorg-sdk'
 
 const BASE_URL = process.env.AGENTICORG_BASE_URL ?? 'https://agenticorg.hackathon.pinelabs.com'
+const API = `${BASE_URL}/api/v1`
 
-export const agenticOrgReady = () =>
-  Boolean(process.env.AGENTICORG_API_KEY && process.env.AGENTICORG_COMPANY_ID)
+// "Say it get paid: Collections" in our AgenticOrg org.
+const COLLECTIONS_AGENT_ID = process.env.AGENTICORG_COLLECTIONS_AGENT_ID ?? 'c17ea5b6-f3de-4f23-91c0-2894d4311779'
+
+// The hackathon instance rejects our API key, so we sign in as a member and use the session token.
+export const agenticOrgReady = () => Boolean(process.env.AGENTICORG_EMAIL && process.env.AGENTICORG_PASSWORD)
+
+type AgentRunResult = {
+  run_id?: string
+  status: string
+  output?: unknown
+  confidence?: number
+  tool_calls?: Record<string, unknown>[]
+  reasoning_trace?: string[]
+  hitl_trigger?: string | null
+}
+
+// Sessions last an hour; reuse one across requests on a warm instance.
+let session: { token: string; expires: number } | null = null
+
+async function token(fresh = false) {
+  if (!fresh && session && session.expires > Date.now()) return session.token
+  const res = await fetch(`${API}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: process.env.AGENTICORG_EMAIL, password: process.env.AGENTICORG_PASSWORD }),
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (!res.ok) throw new Error(`AgenticOrg login failed: ${res.status}`)
+  const { access_token } = (await res.json()) as { access_token: string }
+  session = { token: access_token, expires: Date.now() + 50 * 60_000 }
+  return access_token
+}
+
+async function runAgent(agentId: string, body: unknown): Promise<AgentRunResult> {
+  const call = async (fresh: boolean) =>
+    fetch(`${API}/agents/${agentId}/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await token(fresh)}` },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(45_000),
+    })
+  let res = await call(false)
+  if (res.status === 401) res = await call(true)
+  if (!res.ok) throw new Error(`AgenticOrg run failed: ${res.status} ${(await res.text()).slice(0, 200)}`)
+  return (await res.json()) as AgentRunResult
+}
 
 export type ChaseInput = {
   sellerName: string
@@ -44,26 +88,22 @@ function pick(obj: unknown, keys: string[], depth = 0): string | null {
   return null
 }
 
+// Only a real Pine Labs link counts. Without Plural keys the agent hands back our own invoice URL.
+const PINE = /pinelabs|plural|pinepg/i
+
 function findUrl(obj: unknown) {
   const direct = pick(obj, ['payment_link', 'paymentLink', 'short_url', 'link', 'url', 'payment_url'])
-  if (direct?.startsWith('http')) return direct
+  if (direct?.startsWith('http') && PINE.test(direct)) return direct
   const text = JSON.stringify(obj ?? {})
-  return text.match(/https:\/\/[^"\s\\]*(pinelabs|plural)[^"\s\\]*/i)?.[0] ?? null
+  return text.match(/https:\/\/[^"\s\\]*(pinelabs|plural|pinepg)[^"\s\\]*/i)?.[0] ?? null
 }
 
 // The collections agent: decides the tone from how late the invoice is,
 // creates a Pine Labs payment link, and drafts the reminder. A human approves
 // before anything is sent.
 export async function runCollectionsAgent(input: ChaseInput): Promise<ChaseResult> {
-  const client = new AgenticOrg({
-    apiKey: process.env.AGENTICORG_API_KEY,
-    baseUrl: BASE_URL,
-    timeout: 45_000,
-  })
-
-  const result: AgentRunResult = await client.agents.run('ar_collections', {
+  const result = await runAgent(COLLECTIONS_AGENT_ID, {
     action: 'process',
-    companyId: process.env.AGENTICORG_COMPANY_ID,
     inputs: {
       task: 'chase_overdue_invoice',
       invoice: {
@@ -77,9 +117,9 @@ export async function runCollectionsAgent(input: ChaseInput): Promise<ChaseResul
         upi_link: input.upiLink,
       },
       steps: [
-        `Create a Pine Labs payment link for INR ${input.amountRupees} referencing ${input.invoiceNumber}.`,
+        `Create a Pine Labs payment link for INR ${input.amountRupees} referencing ${input.invoiceNumber}. If you cannot, the link is ${input.invoiceUrl}, which shows the invoice with a UPI QR.`,
         `Pick a tone from days_overdue: 0 or less is a friendly heads-up, 1 to 14 is a polite reminder, over 14 is firm but courteous.`,
-        `Draft a short WhatsApp reminder in ${input.language}, from ${input.sellerName}, with the amount, the invoice number and the payment link. Under 60 words, no subject line.`,
+        `Draft a short WhatsApp reminder in ${input.language}, from ${input.sellerName}, with the amount, the invoice number and the link written out in full. Never a placeholder like [Payment Link]. Under 60 words, no subject line.`,
         'Do not send anything. A human approves the message first.',
       ],
       output_format: { message: 'string', payment_link: 'string', tone: 'string' },

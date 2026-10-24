@@ -14,9 +14,6 @@ importers:
       '@base-ui/react':
         specifier: ^1.9.0
         version: 1.9.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      agenticorg-sdk:
-        specifier: 0.4.0
-        version: 0.4.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1029,9 +1026,6 @@ packages:
     resolution: {integrity: sha512-oJlA3XiRm7Cyk6qFD2Jn8ak9B7jSy0qy00ADO3+8dpT0LSjFihQYv4C02LFCSYJV3Q37xYwwRy5m+IpIiUzqWw==}
     engines: {node: '>=0.4.0'}
     hasBin: true
-
-  agenticorg-sdk@0.4.0:
-    resolution: {integrity: sha512-R1vrn8VfzY2km4B5d4kpTfjKoW1+t41qLQCMKKZjV+sruA1b/BzAbN2kiQNhypn0vrubEeCc2AKRM1xYFno/Fw==}
 
   ajv-formats@2.1.1:
     resolution: {integrity: sha512-Wx0Kx52hxE7C18hkMEggYlEifqWZtYaRgouJor+WMdPnQyEK13vgEWyVNup7SoeeoLMsr4kf5h6dOW11I15MUA==}
@@ -4151,8 +4145,6 @@ snapshots:
       acorn: 8.19.0
 
   acorn@8.19.0: {}
-
-  agenticorg-sdk@0.4.0: {}
 
   ajv-formats@2.1.1(ajv@8.20.0):
     optionalDependencies:

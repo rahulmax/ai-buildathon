@@ -55,8 +55,9 @@ export async function POST(req: Request) {
 
   // The link the customer pays from: Pine Labs if the agent made one, else our invoice page with UPI.
   const link = agent?.paymentLink ?? invoiceUrl
+  const agentMessage = agent?.message && agent.message.includes('http') ? agent.message : null
   const message =
-    (agent?.message && agent.message.includes('http') ? agent.message : null) ??
+    agentMessage ??
     (await draftReminder({
       sellerName: ws.name,
       customerName: inv.customer_name,
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
     })) ??
     `Hi ${inv.customer_name}, a reminder for invoice ${inv.number} of ${amount}. You can pay here:\n${link}\n\nThanks, ${ws.name}`
 
-  const source = agent ? 'agenticorg' : 'claude'
+  const source = agentMessage ? 'agenticorg' : 'claude'
   await sql`
     insert into chase (invoice_id, source, message, payment_link, agent_run_id, trace)
     values (${inv.id}, ${source}, ${message}, ${agent?.paymentLink ?? null}, ${agent?.runId ?? null},
