@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { closeCustomer, type CustomerOption } from '@/lib/customers'
-import { addDays, todayIST } from '@/lib/dates'
+import { addDays, DEFAULT_DUE_DAYS, todayIST } from '@/lib/dates'
 import { GST_RATES, STATES, totals } from '@/lib/gst'
 import { checkGstin } from '@/lib/gstin'
 import { formatINR, toPaise } from '@/lib/money'
@@ -71,11 +71,11 @@ export function InvoiceConfirm({
     (spokenGstin?.check.ok ? spokenGstin.check.state : null) ?? spokenState ?? supplierState,
   )
   const [assumed, setAssumed] = useState(!spokenState && !spokenGstin?.check.ok)
-  const [phone, setPhone] = useState('')
+  const [phone, setPhone] = useState(extract?.customer_phone ?? '')
   const [customerGstin, setCustomerGstin] = useState(spokenGstin?.value ?? '')
   const [gstRate, setGstRate] = useState<string>(extract?.gst_rate != null ? String(extract.gst_rate) : '')
   const [due, setDue] = useState(
-    extract?.due_date ?? (extract?.due_in_days != null ? addDays(today, extract.due_in_days) : ''),
+    extract?.due_date ?? addDays(today, extract?.due_in_days ?? DEFAULT_DUE_DAYS),
   )
   const [lines, setLines] = useState<Line[]>(
     extract?.lines.length
@@ -238,6 +238,7 @@ export function InvoiceConfirm({
               inputMode="decimal"
               value={l.quantity}
               onChange={(e) => setLine(i, { quantity: e.target.value })}
+              className="amount h-14 text-center text-lg md:text-lg"
             />
             <div className="relative">
               <span className="absolute top-1/2 left-3 -translate-y-1/2 text-xl text-muted-foreground">₹</span>
@@ -255,7 +256,7 @@ export function InvoiceConfirm({
               aria-label="SAC or HSN code"
               value={l.code}
               onChange={(e) => setLine(i, { code: e.target.value })}
-              className="field text-sm"
+              className="field"
             >
               <option value="">No SAC/HSN code</option>
               {coded.map((s) => (
@@ -270,7 +271,7 @@ export function InvoiceConfirm({
       <Button
         variant="ghost"
         size="sm"
-        className="self-start"
+        className="-ml-2.5 self-start"
         onClick={() => setLines((ls) => [...ls, { description: '', quantity: '1', rate: '', code: defaultCode(null) }])}
       >
         <Plus /> Add an item
@@ -307,6 +308,7 @@ export function InvoiceConfirm({
             placeholder="No due date"
             clearable
             presets={[
+              { label: '2 days', days: 2 },
               { label: '7 days', days: 7 },
               { label: '15 days', days: 15 },
               { label: '30 days', days: 30 },
@@ -373,7 +375,9 @@ export function InvoiceConfirm({
       </div>
 
       {registered === false && (
-        <p className="text-sm text-muted-foreground">No GSTIN, so no GST. This will be a bill of supply.</p>
+        <p className="text-sm text-muted-foreground">
+          You’re not registered for GST, so there’s no GST to add. We’ll send this as a bill of supply.
+        </p>
       )}
 
       <dl className="flex flex-col gap-1 rounded-xl border border-line bg-paper p-4 text-sm">
@@ -389,7 +393,7 @@ export function InvoiceConfirm({
 
       <div className="flex gap-2">
         <Button size="lg" className="flex-1" disabled={!ready || pending} onClick={save}>
-          {pending ? 'Saving…' : 'Looks right, send it'}
+          {pending ? 'Sending…' : 'Send'}
         </Button>
         <Button variant="ghost" size="lg" onClick={onCancel} disabled={pending}>
           Cancel

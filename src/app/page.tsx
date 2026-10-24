@@ -73,9 +73,6 @@ export default async function Home() {
               {profit.profit < 0 && '− '}
               {formatINR(Math.abs(profit.profit))}
             </span>
-            <span className="text-sm">
-              Money in: <span className="amount">{formatINR(profit.received)}</span> received
-            </span>
             <span className="text-xs text-muted-foreground">Sales less expenses · see your books</span>
           </span>
           <ChevronRight className="size-4 shrink-0 text-ink-muted" />

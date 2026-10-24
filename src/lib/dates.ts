@@ -3,6 +3,9 @@ export function todayIST() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date())
 }
 
+// An invoice with no due date said is due in two days.
+export const DEFAULT_DUE_DAYS = 2
+
 export function addDays(date: string, days: number) {
   const d = new Date(`${date}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() + days)
