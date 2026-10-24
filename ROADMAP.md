@@ -7,8 +7,9 @@ Six months, starting the day after the event. Dates are targets, not promises.
 themselves, in your own language.
 
 **Who it's for first:** freelancers and one-person businesses in India: designers,
-developers, consultants, tutors, small shops. People who send invoices and keep receipts,
-and have no time or training for accounting software.
+developers, consultants, tutors, caterers, contractors. People who bill clients and keep
+receipts, and have no time or training for accounting software. Businesses that send
+invoices, not shops that run credit.
 
 ## Built today, 2026-10-24
 
@@ -67,11 +68,16 @@ To test, not settled:
 - **Payments:** a share of the payment fee through Pine Labs.
 - **Later:** lending against invoices, through a partner.
 
-## Why us, not Vyapar, Khatabook or Zoho Books
+## Why us, not Khatabook, Vyapar or Zoho Books
 
-They're forms you fill in. Ours is a sentence you say or a photo you take, in your own
-language. Nobody types a ledger entry, and the books are right because the double entry is
-underneath from day one, not added later.
+Khatabook tracks who owes you. Hisab makes the invoice, collects the payment and works out
+your GST, from one sentence.
+
+- **Khatabook** is a credit ledger for shops: who owes what. GST to pay needs the GST on
+  both sides, on the invoices you send and the bills you pay. A credit ledger doesn't hold that.
+- **Vyapar and Zoho Books** do GST, but you build each invoice field by field.
+- **Voice alone isn't the moat.** Other apps already take voice notes. Ours ends in a correct
+  GST invoice and a GST-to-pay figure, because the double entry is underneath from day one.
 
 ## The slide
 
