@@ -2,9 +2,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { ArrowRight, Camera, Mic } from 'lucide-react'
+import { HowItWorks } from '@/components/explainer'
 import { Mark } from '@/components/mark'
 import { buttonVariants } from '@/components/ui/button'
 import { formatINR } from '@/lib/money'
+import { qrSvg, upiLink } from '@/lib/upi'
 
 // What a first-time visitor sees at `/`. Images are generated on-brand with Higgsfield.
 
@@ -13,14 +15,6 @@ const LANGUAGES = [
   { label: 'हिन्दी', lang: 'hi' },
   { label: 'ಕನ್ನಡ', lang: 'kn' },
   { label: 'മലയാളം', lang: 'ml' },
-]
-
-// Same four steps, in the same words, as the pills in explainer.gif.
-const STEPS = [
-  { title: 'Say it', body: 'Tap the mic and say who it’s for, what it’s for and how much. In any of the four languages.' },
-  { title: 'Check it', body: 'The invoice fills itself in, GST split and all. Fix anything before it’s saved.' },
-  { title: 'Send it', body: 'It gets its own link with a UPI QR. One tap sends it to your customer on WhatsApp.' },
-  { title: 'Get paid', body: 'They pay by UPI, straight to your account. Mark it paid and your books update.' },
 ]
 
 function Start({ className = '' }: { className?: string }) {
@@ -104,7 +98,9 @@ function Way({
   )
 }
 
-export function Landing() {
+export async function Landing() {
+  // A real, scannable QR for the demo invoice in the How it works phone.
+  const qr = await qrSvg(upiLink({ upiId: 'riya.design@okaxis', payee: 'Riya Design Studio', amount: 47_200_00, note: 'INV-2627-0007' }))
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-24 px-4 pt-5 pb-10 md:gap-32 md:px-8">
       <header className="rise flex items-center justify-between">
@@ -144,37 +140,7 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="grid items-center gap-10 md:grid-cols-2 md:gap-16">
-        <div className="flex flex-col gap-6 md:order-2">
-          <div className="flex flex-col gap-2">
-            <p className="kicker">How it works</p>
-            <h2 className="text-3xl font-semibold md:text-4xl">From one sentence to a paid invoice.</h2>
-          </div>
-          <ol className="flex flex-col gap-5">
-            {STEPS.map((s, i) => (
-              <li key={s.title} className="flex gap-4">
-                <span className="amount flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700 dark:bg-brand-100">
-                  {i + 1}
-                </span>
-                <div className="flex flex-col gap-1">
-                  <h3 className="font-semibold">{s.title}</h3>
-                  <p className="leading-relaxed text-muted-foreground">{s.body}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-        <div className="overflow-hidden rounded-3xl border border-line shadow-card md:order-1">
-          <Image
-            src="/landing/explainer.gif"
-            alt="Saying an invoice on a phone: it fills in, gets a UPI link, goes out on WhatsApp and gets marked paid"
-            width={800}
-            height={960}
-            unoptimized
-            className="h-auto w-full"
-          />
-        </div>
-      </section>
+      <HowItWorks qr={qr} />
 
       <section className="rise flex flex-col items-center gap-5 text-center">
         <h2 className="text-2xl font-semibold md:text-3xl">Bill in the language you think in.</h2>
