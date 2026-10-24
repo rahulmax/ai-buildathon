@@ -1,23 +1,31 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useState, useSyncExternalStore, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2 } from 'lucide-react'
+import { BookUser, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createInvoice, loadInvoiceForm, type InvoiceFormData } from '@/app/actions'
 import { DatePicker } from '@/components/date-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { closeCustomer, type CustomerOption } from '@/lib/customers'
+import { closeCustomer, normaliseName, phoneKey, type CustomerOption } from '@/lib/customers'
 import { addDays, DEFAULT_DUE_DAYS, todayIST } from '@/lib/dates'
 import { GST_RATES, STATES, totals } from '@/lib/gst'
 import { checkGstin } from '@/lib/gstin'
 import { formatINR, toPaise } from '@/lib/money'
+import { cn } from '@/lib/utils'
 import type { InvoiceExtract } from '@/lib/schemas'
 import type { WorkspaceService } from '@/lib/workspace'
 
 type Line = { description: string; quantity: string; rate: string; code: string }
+
+// The Contact Picker API: Chrome on Android only. Not in the DOM types yet.
+type ContactsManager = {
+  select: (props: ('name' | 'tel')[], opts: { multiple: boolean }) => Promise<{ name?: string[]; tel?: string[] }[]>
+}
+const contactsApi = () => (navigator as Navigator & { contacts?: ContactsManager }).contacts
+const noSubscribe = () => () => {}
 
 const matchState = (s: string | null) =>
   s ? STATES.find((x) => x.toLowerCase() === s.trim().toLowerCase()) ?? null : null
@@ -67,6 +75,8 @@ export function InvoiceConfirm({
   const [customer, setCustomer] = useState(extract?.customer_name ?? '')
   const [customerId, setCustomerId] = useState<string | null>(null)
   const [dismissed, setDismissed] = useState<string[]>([])
+  const [focused, setFocused] = useState(false)
+  const canPick = useSyncExternalStore(noSubscribe, () => typeof contactsApi()?.select === 'function', () => false)
   const [state, setState] = useState<string>(
     (spokenGstin?.check.ok ? spokenGstin.check.state : null) ?? spokenState ?? supplierState,
   )
@@ -92,6 +102,14 @@ export function InvoiceConfirm({
   const customers = ctx?.customers ?? []
   const chosen = customers.find((c) => c.id === customerId) ?? null
   const suggestion = chosen ? null : closeCustomer(customer, customers.filter((c) => !dismissed.includes(c.id)))
+  // Past customers while typing. An exact name needs no pick: the server reuses it.
+  const typed = normaliseName(customer)
+  const matches =
+    focused && !chosen
+      ? customers
+          .filter((c) => (!typed || normaliseName(c.name).includes(typed)) && c.name.trim().toLowerCase() !== customer.trim().toLowerCase())
+          .slice(0, 5)
+      : []
   const gstin = gstinOf(customerGstin)
   const gstinState = gstin?.check.ok ? gstin.check.state : null
   const gstinOwner = gstinState && !chosen ? customers.find((c) => c.gstin === gstin?.value) : undefined
@@ -133,6 +151,24 @@ export function InvoiceConfirm({
     } else if (assumed && !gstinState && savedState) {
       setState(savedState)
       setAssumed(false)
+    }
+  }
+
+  // From the phone's contacts: a number we already know is that customer.
+  async function pickContact() {
+    try {
+      const [c] = (await contactsApi()?.select(['name', 'tel'], { multiple: false })) ?? []
+      const name = c?.name?.[0]?.trim()
+      const tel = c?.tel?.[0]?.trim()
+      const known = tel ? customers.find((x) => x.phone && phoneKey(x.phone) === phoneKey(tel)) : undefined
+      if (known) pickCustomer(known)
+      else if (name) {
+        setCustomer(name)
+        setCustomerId(null)
+      }
+      if (tel) setPhone(tel)
+    } catch {
+      // Closed the picker, or the browser said no. The fields stay as they were.
     }
   }
 
@@ -183,16 +219,55 @@ export function InvoiceConfirm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="customer">Customer</Label>
-        <Input
-          id="customer"
-          value={customer}
-          onChange={(e) => {
-            setCustomer(e.target.value)
-            setCustomerId(null)
-          }}
-          className="h-11 text-lg"
-        />
-        {suggestion && (
+        <div className="relative">
+          <Input
+            id="customer"
+            value={customer}
+            autoComplete="off"
+            onChange={(e) => {
+              setCustomer(e.target.value)
+              setCustomerId(null)
+            }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            className={cn('h-11 text-lg', canPick && 'pr-12')}
+          />
+          {canPick && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Pick from contacts"
+              onClick={pickContact}
+              className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground"
+            >
+              <BookUser />
+            </Button>
+          )}
+          {matches.length > 0 && (
+            <ul className="card absolute inset-x-0 top-full z-10 mt-1 overflow-hidden p-1">
+              {matches.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    // Keep focus in the input, so blur doesn't close the list before the tap lands.
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      pickCustomer(c)
+                      setFocused(false)
+                    }}
+                    className="flex w-full flex-col items-start rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted"
+                  >
+                    <span className="font-medium">{c.name}</span>
+                    {(c.phone || c.gstin || c.state) && (
+                      <span className="text-xs text-muted-foreground">{c.phone ?? c.gstin ?? c.state}</span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {suggestion && !matches.length && (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-paper px-3 py-2 text-sm">
             <span className="min-w-0">
               Same as <span className="font-medium">{suggestion.name}</span>?
