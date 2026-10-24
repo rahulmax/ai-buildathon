@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Keyboard, Loader2, Mic, Square } from 'lucide-react'
+import { Keyboard, Loader2, Mic, Receipt, Square } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -95,11 +95,26 @@ export function Capture({ supplierState, services }: { supplierState: string; se
     }
   }
 
+  // A photo (camera or gallery) or a PDF bill. Photos shrink first; PDFs go as they are.
   async function onPhoto(file: File | undefined) {
     if (!file) return
+    const pdf = file.type === 'application/pdf'
+    // Vercel refuses request bodies over 4.5 MB.
+    if (pdf && file.size > 4 * 1024 * 1024) {
+      toast.error('That PDF is over 4 MB. Try a photo of the bill instead.')
+      if (photoInput.current) photoInput.current.value = ''
+      return
+    }
     setStage({ kind: 'working', label: 'Reading the bill…' })
     const form = new FormData()
-    form.append('photo', await shrink(file), 'bill.jpg')
+    try {
+      form.append('photo', pdf ? file : await shrink(file), pdf ? 'bill.pdf' : 'bill.jpg')
+    } catch {
+      toast.error('Couldn’t open that file. Use a photo or a PDF of the bill.')
+      setStage({ kind: 'idle' })
+      if (photoInput.current) photoInput.current.value = ''
+      return
+    }
     const res = await fetch('/api/read-bill', { method: 'POST', body: form })
     if (signedOut(res)) return
     const data = await res.json()
@@ -192,7 +207,7 @@ export function Capture({ supplierState, services }: { supplierState: string; se
       </button>
       <div className="grid grid-cols-2 gap-3">
         <Button variant="outline" size="lg" onClick={() => photoInput.current?.click()} disabled={recording}>
-          <Camera /> Snap a bill
+          <Receipt /> Add a bill
         </Button>
         <Button variant="outline" size="lg" onClick={() => setStage({ kind: 'typing' })} disabled={recording}>
           <Keyboard /> Type it
@@ -201,8 +216,8 @@ export function Capture({ supplierState, services }: { supplierState: string; se
       <input
         ref={photoInput}
         type="file"
-        accept="image/*"
-        capture="environment"
+        // No capture attribute: the phone offers camera, photos or files.
+        accept="image/*,application/pdf"
         className="hidden"
         onChange={(e) => onPhoto(e.target.files?.[0])}
       />

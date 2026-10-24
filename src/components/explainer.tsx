@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, type ReactNode } from 'react'
-import { Camera, CheckCircle2, IndianRupee, Keyboard, Loader2, MessageCircle, Mic, Square } from 'lucide-react'
+import { CheckCircle2, IndianRupee, Keyboard, Loader2, MessageCircle, Mic, Receipt, Square } from 'lucide-react'
 
 // How it works: the real screens, animated live. One clock drives the phone and the steps
 // beside it, so the step that's lit is always the one playing. Click a step to jump to it.
@@ -302,7 +302,7 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <span className="flex h-12 items-center justify-center gap-2 rounded-lg border border-input bg-surface font-medium">
-                <Camera className="size-4" /> Snap a bill
+                <Receipt className="size-4" /> Add a bill
               </span>
               <span className="flex h-12 items-center justify-center gap-2 rounded-lg border border-input bg-surface font-medium">
                 <Keyboard className="size-4" /> Type it

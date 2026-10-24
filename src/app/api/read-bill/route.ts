@@ -3,7 +3,7 @@ import { currentWorkspace } from '@/lib/workspace'
 
 export const maxDuration = 60
 
-const TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const
+const TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'] as const
 
 export async function POST(req: Request) {
   if (!(await currentWorkspace())) return Response.json({ error: 'No workspace' }, { status: 401 })
@@ -13,8 +13,8 @@ export async function POST(req: Request) {
     return Response.json({ error: 'No photo' }, { status: 400 })
   }
   const type = TYPES.find((t) => t === photo.type)
-  if (!type) return Response.json({ error: 'Use a JPEG or PNG photo' }, { status: 400 })
-  if (photo.size > 5 * 1024 * 1024) return Response.json({ error: 'Photo is too large' }, { status: 413 })
+  if (!type) return Response.json({ error: 'Use a photo or a PDF of the bill' }, { status: 400 })
+  if (photo.size > 5 * 1024 * 1024) return Response.json({ error: 'That file is too large' }, { status: 413 })
   try {
     // The photo is read and dropped. Only the fields are kept.
     const base64 = Buffer.from(await photo.arrayBuffer()).toString('base64')

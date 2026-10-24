@@ -46,9 +46,10 @@ Rules:
 - category is one of travel, food, software, equipment, rent, other. Restaurants and cafés are food.
 - seller_state from the seller's address or the first two digits of their GSTIN (29 = Karnataka, 32 = Kerala, 27 = Maharashtra, 07 = Delhi, 33 = Tamil Nadu, 36 = Telangana).`
 
-type ImageType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
+type BillType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' | 'application/pdf'
 
-export async function readBill(base64: string, mediaType: ImageType) {
+// A photo of a bill, or a PDF one (the kind that arrives by email).
+export async function readBill(base64: string, mediaType: BillType) {
   const res = await client.messages.parse({
     model: MODEL,
     max_tokens: 4000,
@@ -58,7 +59,9 @@ export async function readBill(base64: string, mediaType: ImageType) {
       {
         role: 'user',
         content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          mediaType === 'application/pdf'
+            ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } }
+            : { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
           { type: 'text', text: 'Read this bill.' },
         ],
       },
