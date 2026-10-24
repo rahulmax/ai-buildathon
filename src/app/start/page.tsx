@@ -1,6 +1,8 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { DetailsForm } from '@/components/details-form'
 import { Mark } from '@/components/mark'
+import { emailEnabled } from '@/lib/email'
 import { currentWorkspace } from '@/lib/workspace'
 
 export default async function StartPage() {
@@ -17,6 +19,13 @@ export default async function StartPage() {
       <div className="card rise p-5">
         <DetailsForm />
       </div>
+      {emailEnabled() && (
+        <p className="rise text-center">
+          <Link href="/signin" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+            Have books already? Sign in
+          </Link>
+        </p>
+      )}
     </main>
   )
 }
