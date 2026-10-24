@@ -6,6 +6,7 @@ import { Mark } from '@/components/mark'
 import { gstForMonth, profitForMonth, recentActivity, whoOwesMe } from '@/lib/books'
 import { formatDate, todayIST } from '@/lib/dates'
 import { formatINR } from '@/lib/money'
+import { cn } from '@/lib/utils'
 import { currentWorkspace, workspaceServices } from '@/lib/workspace'
 
 export default async function Home() {
@@ -43,21 +44,31 @@ export default async function Home() {
             {owed.invoices.length} open {owed.invoices.length === 1 ? 'invoice' : 'invoices'}
           </span>
         </Link>
-        <Link href="/gst" className="card lift flex flex-col gap-1.5 p-4">
-          <span className="kicker">GST this month</span>
-          <span className="amount text-2xl font-semibold">{formatINR(Math.max(gst.net, 0))}</span>
-          <span className="text-xs text-muted-foreground">{gst.net < 0 ? 'Credit carried forward' : 'To pay'}</span>
-        </Link>
-        <Link href="/books" className="card lift col-span-2 flex items-center justify-between gap-3 p-4">
-          <span className="flex flex-col gap-1.5">
+        {ws.gstin && (
+          <Link href="/gst" className="card lift flex flex-col gap-1.5 p-4">
+            <span className="kicker">GST this month</span>
+            <span className="amount text-2xl font-semibold">{formatINR(gst.credit > 0 ? gst.credit : gst.toPay)}</span>
+            <span className="text-xs text-muted-foreground">
+              {gst.credit > 0 ? 'Credit carried forward' : gst.carriedIn > 0 ? 'To pay, after earlier credit' : 'To pay'}
+            </span>
+          </Link>
+        )}
+        <Link
+          href="/books"
+          className={cn('card lift flex items-center justify-between gap-3 p-4', ws.gstin && 'col-span-2')}
+        >
+          <span className="flex min-w-0 flex-col gap-1.5">
             <span className="kicker">Profit this month</span>
             <span className="amount text-2xl font-semibold">
               {profit.profit < 0 && '− '}
               {formatINR(Math.abs(profit.profit))}
             </span>
+            <span className="text-sm">
+              Money in: <span className="amount">{formatINR(profit.received)}</span> received
+            </span>
             <span className="text-xs text-muted-foreground">Sales less expenses · see your books</span>
           </span>
-          <ChevronRight className="size-4 text-ink-muted" />
+          <ChevronRight className="size-4 shrink-0 text-ink-muted" />
         </Link>
       </section>
 

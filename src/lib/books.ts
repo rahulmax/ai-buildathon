@@ -28,25 +28,55 @@ export async function whoOwesMe(workspaceId: string) {
   return { total, customers, invoices }
 }
 
-// GST collected on invoices, minus GST paid on bills, for one month.
+const GST_HEADS = ['cgst', 'sgst', 'igst'] as const
+
+// GST to pay for one month, with unused input credit carried forward.
+// Walk every month from the first GST entry: net = collected less input; take
+// off any credit brought in. Below zero, the month shows credit and carries it
+// on; at or above zero it's to pay (assumed paid) and nothing carries.
+// Reversal entries (cancelled invoices) are ordinary lines and net out here.
 export async function gstForMonth(workspaceId: string, month: string) {
   const sql = await db()
-  const rows = await sql<{ account: string; balance: number }[]>`
-    select l.account, (sum(l.credit) - sum(l.debit))::bigint as balance
+  const rows = await sql<{ month: string; account: string; collected: number; input: number }[]>`
+    select to_char(e.date, 'YYYY-MM') as month, l.account,
+      (sum(l.credit) - sum(l.debit))::bigint as collected,
+      (sum(l.debit) - sum(l.credit))::bigint as input
     from ledger_line l join ledger_entry e on e.id = l.entry_id
     where e.workspace_id = ${workspaceId}
-      and to_char(e.date, 'YYYY-MM') = ${month}
-      and l.account like '%gst_%'
-    group by l.account`
-  const get = (a: string) => rows.find((r) => r.account === a)?.balance ?? 0
-  const heads = (['cgst', 'sgst', 'igst'] as const).map((h) => {
-    const collected = get(`${h}_payable`)
-    const paid = -get(`${h}_input`)
-    return { head: h, collected, paid, net: collected - paid }
-  })
+      and to_char(e.date, 'YYYY-MM') <= ${month}
+      and l.account in ('cgst_payable', 'sgst_payable', 'igst_payable', 'cgst_input', 'sgst_input', 'igst_input')
+    group by 1, 2
+    order by 1`
+
+  // Months with no GST lines change nothing: a credit just passes through.
+  const months = [...new Set(rows.map((r) => r.month))].filter((m) => m < month)
+  const netFor = (m: string) =>
+    rows
+      .filter((r) => r.month === m)
+      .reduce((s, r) => s + (r.account.endsWith('_payable') ? r.collected : -r.input), 0)
+  let carriedIn = 0
+  for (const m of months) {
+    const due = netFor(m) - carriedIn
+    carriedIn = due < 0 ? -due : 0
+  }
+
+  const get = (account: string) => rows.find((r) => r.month === month && r.account === account)
+  const heads = GST_HEADS.map((head) => ({
+    head,
+    collected: get(`${head}_payable`)?.collected ?? 0,
+    paid: get(`${head}_input`)?.input ?? 0,
+  }))
   const collected = heads.reduce((s, h) => s + h.collected, 0)
   const paid = heads.reduce((s, h) => s + h.paid, 0)
-  return { heads, collected, paid, net: collected - paid }
+  const due = collected - paid - carriedIn
+  return {
+    heads,
+    collected,
+    paid,
+    carriedIn,
+    toPay: Math.max(due, 0),
+    credit: Math.max(-due, 0),
+  }
 }
 
 export async function recentActivity(workspaceId: string) {
@@ -61,26 +91,60 @@ export async function recentActivity(workspaceId: string) {
     order by created_at desc limit 8`
 }
 
+const UUID = /^[0-9a-f-]{36}$/i
+
+// Extra team workspaces to leave out, from env, on top of workspace.is_team.
+const teamWorkspaceIds = () =>
+  (process.env.TEAM_WORKSPACE_IDS ?? '')
+    .split(',')
+    .map((id) => id.trim().toLowerCase())
+    .filter((id) => UUID.test(id))
+    .join(',')
+
+// The traction slide. Team workspaces are left out everywhere. A person counts
+// once they save an invoice or a bill today (IST), not on sign-up. Cancelled
+// invoices don't count towards invoices or the amount invoiced.
 export async function statsToday() {
   const sql = await db()
   const [s] = await sql<{ users: number; invoices: number; bills: number; invoiced: number; chases: number }[]>`
+    with today as (
+      select (now() at time zone 'Asia/Kolkata')::date as d
+    ), ws as (
+      select id from workspace
+      where not is_team and id::text <> all(string_to_array(${teamWorkspaceIds()}, ','))
+    ), inv as (
+      select i.workspace_id, i.status, i.total from invoice i
+      where i.workspace_id in (select id from ws)
+        and (i.created_at at time zone 'Asia/Kolkata')::date = (select d from today)
+    ), bil as (
+      select b.workspace_id from bill b
+      where b.workspace_id in (select id from ws)
+        and (b.created_at at time zone 'Asia/Kolkata')::date = (select d from today)
+    )
     select
-      (select count(*)::int from workspace where (created_at at time zone 'Asia/Kolkata')::date = (now() at time zone 'Asia/Kolkata')::date) as users,
-      (select count(*)::int from invoice where (created_at at time zone 'Asia/Kolkata')::date = (now() at time zone 'Asia/Kolkata')::date) as invoices,
-      (select count(*)::int from bill where (created_at at time zone 'Asia/Kolkata')::date = (now() at time zone 'Asia/Kolkata')::date) as bills,
-      (select coalesce(sum(total), 0)::bigint from invoice where (created_at at time zone 'Asia/Kolkata')::date = (now() at time zone 'Asia/Kolkata')::date) as invoiced,
-      (select count(*)::int from chase where (created_at at time zone 'Asia/Kolkata')::date = (now() at time zone 'Asia/Kolkata')::date) as chases`
+      (select count(*)::int from (select workspace_id from inv union select workspace_id from bil) p) as users,
+      (select count(*)::int from inv where status <> 'cancelled') as invoices,
+      (select count(*)::int from bil) as bills,
+      (select coalesce(sum(total), 0)::bigint from inv where status <> 'cancelled') as invoiced,
+      (select count(*)::int from chase ch join invoice i on i.id = ch.invoice_id
+        where i.workspace_id in (select id from ws)
+          and (ch.created_at at time zone 'Asia/Kolkata')::date = (select d from today)) as chases`
   return s
 }
 
 // Profit for one month, straight from the ledger: sales less expenses.
-// Expenses split by the category of the bill that posted them.
+// Expenses split by the category of the bill that posted them. `received` is
+// cash that actually came in: bank and Pine Labs debits on payment entries.
+// TDS kept by clients isn't cash, so it stays out.
 export async function profitForMonth(workspaceId: string, month: string) {
   const sql = await db()
-  const [totals] = await sql<{ revenue: number; expenses: number }[]>`
+  const [totals] = await sql<{ revenue: number; expenses: number; received: number }[]>`
     select
       coalesce(sum(l.credit - l.debit) filter (where l.account = 'revenue'), 0)::bigint as revenue,
-      coalesce(sum(l.debit - l.credit) filter (where l.account = 'expenses'), 0)::bigint as expenses
+      coalesce(sum(l.debit - l.credit) filter (where l.account = 'expenses'), 0)::bigint as expenses,
+      coalesce(sum(l.debit) filter (
+        where e.source_type = 'payment' and l.account in ('bank', 'pine_labs_clearing')
+      ), 0)::bigint as received
     from ledger_line l join ledger_entry e on e.id = l.entry_id
     where e.workspace_id = ${workspaceId} and to_char(e.date, 'YYYY-MM') = ${month}`
   const categories = await sql<{ category: string; amount: number; bills: number }[]>`
