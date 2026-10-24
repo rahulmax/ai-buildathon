@@ -10,26 +10,26 @@ const T = 12
 
 const STEPS = [
   {
-    title: 'Say it',
-    body: 'Tap the mic and say who it’s for, what it’s for and how much. In any of the four languages.',
+    title: 'Dictate',
+    body: 'Tap the microphone and state the client name, service, amount, and GST rate in English, Hindi, Kannada, or Malayalam.',
     from: 0,
     still: 2.4,
   },
   {
-    title: 'Check it',
-    body: 'The invoice fills itself in, GST split and all. Fix anything before it’s saved.',
+    title: 'Review',
+    body: 'Verify the extracted line items, HSN/SAC classification, and CGST/SGST or IGST calculation before saving.',
     from: 3.2,
     still: 5,
   },
   {
-    title: 'Send it',
-    body: 'It gets its own link with a UPI QR. One tap sends it to your customer on WhatsApp.',
+    title: 'Share',
+    body: 'Generate a dedicated invoice page with a scannable UPI QR code and send the link to your client on WhatsApp.',
     from: 6,
     still: 8,
   },
   {
-    title: 'Get paid',
-    body: 'They pay by UPI, straight to your account. Mark it paid and your books update.',
+    title: 'Reconcile',
+    body: 'Receive UPI payments directly in your bank account and mark the invoice paid to update your ledger.',
     from: 8.9,
     still: 10,
   },
@@ -186,7 +186,7 @@ export function HowItWorks({ qr }: { qr: string }) {
       <div className="flex flex-col gap-6 md:order-2">
         <div className="flex flex-col gap-2">
           <p className="kicker">How it works</p>
-          <h2 className="text-3xl font-semibold md:text-4xl">From one sentence to a paid invoice.</h2>
+          <h2 className="text-3xl font-semibold md:text-4xl">Create, share, and reconcile GST invoices in four steps</h2>
         </div>
         <ol className="flex flex-col gap-2">
           {STEPS.map((s, i) => (

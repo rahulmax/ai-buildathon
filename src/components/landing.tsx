@@ -21,7 +21,7 @@ const LANGUAGES = [
 function Start({ className = '' }: { className?: string }) {
   return (
     <Link href="/start" className={buttonVariants({ size: 'lg', className: `shadow-lift ${className}` })}>
-      Make your first invoice
+      Create an invoice
       <ArrowRight
         data-icon="inline-end"
         className="transition-transform duration-state ease-ambient group-hover/button:translate-x-0.5"
@@ -111,23 +111,26 @@ export async function Landing() {
         <header className="rise relative z-10 flex items-center justify-between">
           <Mark />
           <Link href="/start" className={buttonVariants({ variant: 'ghost' })}>
-            Start
+            Get started
           </Link>
         </header>
 
         <section className="wash wash-hero stagger grid items-center gap-12 md:grid-cols-[1.1fr_1fr] md:gap-16">
           <div className="flex flex-col gap-6">
-            <p className="kicker rise">For freelancers and small sellers</p>
-            <h1 className="rise rise-blur text-5xl leading-[1.02] font-semibold md:text-7xl">Say it, get&nbsp;paid.</h1>
+            <p className="kicker rise">Invoicing &amp; GST bookkeeping</p>
+            <h1 className="rise rise-blur text-5xl leading-[1.02] font-semibold md:text-7xl">
+              Voice-first GST invoicing for Indian businesses.
+            </h1>
             <p className="rise max-w-lg text-lg leading-relaxed text-muted-foreground">
-              Say an invoice out loud. Get a GST invoice with a UPI QR, and a reminder ready to send on WhatsApp.
+              Describe the work out loud to generate a compliant GST invoice with HSN/SAC codes, a scannable UPI QR code,
+              and a payment link ready to share on WhatsApp.
             </p>
             <div className="rise flex flex-col items-start gap-3">
               <Start />
-              <p className="text-sm text-ink-muted">No sign-up. Your first invoice takes a minute.</p>
+              <p className="text-sm text-ink-muted">Start immediately in your browser — no account setup required.</p>
               {emailEnabled() && (
                 <Link href="/signin" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
-                  Have books already? Sign in
+                  Already have a workspace? Sign in
                 </Link>
               )}
             </div>
@@ -155,7 +158,7 @@ export async function Landing() {
         </div>
 
         <section className="wash wash-lang flex flex-col items-center gap-5 text-center">
-          <h2 className="reveal text-2xl font-semibold md:text-3xl">Bill in the language you think in.</h2>
+          <h2 className="reveal text-2xl font-semibold md:text-3xl">Multilingual voice recognition built for Indian billing</h2>
           <ul className="reveal-group flex flex-wrap justify-center gap-2">
             {LANGUAGES.map((l) => (
               <li key={l.lang} lang={l.lang} className="rounded-full border border-line bg-surface px-4 py-2 text-lg">
@@ -164,36 +167,37 @@ export async function Landing() {
             ))}
           </ul>
           <p className="reveal max-w-md text-muted-foreground">
-            Rupee amounts, customer names and GST rates come through in all four. Every field is yours to check before
-            anything is saved.
+            Dictate invoices in English, Hindi, Kannada, or Malayalam. Hisab accurately extracts client names, rupee
+            amounts, tax slabs, and due dates into an editable draft before you issue the invoice.
           </p>
         </section>
 
         <section className="flex flex-col gap-8">
           <div className="reveal flex flex-col gap-2">
-            <p className="kicker">Two ways in</p>
-            <h2 className="text-3xl font-semibold md:text-4xl">Money in, money out.</h2>
+            <p className="kicker">Receivables &amp; payables</p>
+            <h2 className="text-3xl font-semibold md:text-4xl">Track client billing and vendor expenses in one place</h2>
           </div>
           <div className="reveal-group grid gap-6 md:grid-cols-2">
             <Way
               src="/landing/say.jpg"
               alt="A developer saying an invoice into his phone by a window"
               icon={<Mic className="size-3.5" />}
-              kicker="Money in"
-              title="Say an invoice."
+              kicker="Receivables"
+              title="Issue GST invoices in seconds"
             >
-              Customer, lines, GST rate and due date, filled in from what you said. Fix anything, then send it. Each
-              invoice gets its own link with a UPI QR.
+              Speak or type what you are billing for, and Hisab populates the customer details, line items, HSN/SAC
+              codes, and CGST/SGST or IGST splits. Review the draft and share a dedicated payment page with a built-in
+              UPI QR code.
             </Way>
             <Way
               src="/landing/snap.jpg"
               alt="A shopkeeper photographing a paper bill on his counter"
               icon={<Camera className="size-3.5" />}
-              kicker="Money out"
-              title="Snap a bill."
+              kicker="Expenses"
+              title="Log vendor bills for input tax credit"
             >
-              Photograph any bill or receipt. The seller, their GSTIN, the amount and the GST you paid are logged as an
-              expense. We keep the numbers, not the photo.
+              Upload a photo or PDF of any supplier receipt. Hisab extracts the vendor name, GSTIN, invoice total, and
+              tax breakdown to record the expense and track your eligible input GST automatically.
             </Way>
           </div>
         </section>
@@ -209,20 +213,23 @@ export async function Landing() {
             />
           </div>
           <div className="reveal-group flex flex-col gap-5">
-            <p className="kicker">The books</p>
-            <h2 className="text-3xl font-semibold md:text-4xl">Your books keep themselves.</h2>
+            <p className="kicker">Accounting</p>
+            <h2 className="text-3xl font-semibold md:text-4xl">Double-entry accounting without the spreadsheet work</h2>
             <p className="leading-relaxed text-muted-foreground">
-              Every invoice and bill is recorded in double-entry books underneath. You only see two things.
+              Every invoice you issue, payment you collect, and bill you record posts directly to a balanced
+              double-entry ledger, giving you an up-to-date view of your receivables and tax position.
             </p>
             <dl className="grid gap-3 sm:grid-cols-2">
               <div className="card flex flex-col gap-1 p-4">
-                <dt className="kicker">Who owes me</dt>
-                <dd className="text-sm text-muted-foreground">Open invoices, oldest first, with the total on top.</dd>
+                <dt className="kicker">Accounts receivable</dt>
+                <dd className="text-sm text-muted-foreground">
+                  Track unpaid client balances sorted by due date and send WhatsApp payment follow-ups in one tap.
+                </dd>
               </div>
               <div className="card flex flex-col gap-1 p-4">
-                <dt className="kicker">GST this month</dt>
+                <dt className="kicker">Net GST liability</dt>
                 <dd className="text-sm text-muted-foreground">
-                  GST you collected, minus GST you paid. Split into CGST, SGST and IGST.
+                  See output tax collected minus input tax credit across CGST, SGST, and IGST for the current month.
                 </dd>
               </div>
             </dl>
@@ -235,9 +242,9 @@ export async function Landing() {
               <Image src="/landing/wall.jpg" alt="" fill sizes="100vw" className="settle object-cover object-left" />
             </div>
             <div className="relative flex flex-col items-start gap-4 p-6 md:absolute md:top-1/2 md:right-12 md:max-w-sm md:-translate-y-1/2 md:rounded-2xl md:bg-surface md:p-8 md:shadow-card">
-              <h2 className="text-3xl font-semibold">Send your first invoice today.</h2>
+              <h2 className="text-3xl font-semibold">Issue your first GST invoice in under a minute</h2>
               <p className="leading-relaxed text-muted-foreground">
-                Open it on your phone, say who to bill, and share the link. That&rsquo;s the whole setup.
+                Enter your business name and UPI ID, dictate the bill details, and share a payment link with your client.
               </p>
               <Start />
             </div>

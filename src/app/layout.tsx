@@ -9,7 +9,7 @@ const mono = IBM_Plex_Mono({ variable: '--font-plex-mono', subsets: ['latin'], w
 
 export const metadata: Metadata = {
   title: { default: 'Hisab', template: '%s · Hisab' },
-  description: 'Say an invoice in your language. Snap a bill. Your books keep themselves.',
+  description: 'Voice-first GST invoicing, expense capture, and double-entry bookkeeping for Indian businesses.',
 }
 
 export const viewport: Viewport = {
