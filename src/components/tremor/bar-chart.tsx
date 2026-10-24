@@ -43,13 +43,13 @@ export function BarChart({
         <ResponsiveContainer>
           <RechartsBarChart data={data} margin={{ bottom: 0, left: 0, right: 0, top: 5 }} barCategoryGap={barCategoryGap}>
             <CartesianGrid className="stroke-chart-grid stroke-1" horizontal vertical={false} />
+            {/* Recharts 3 renders tick labels outside the axis group, so their classes ride on `tick`. */}
             <XAxis
               dataKey={index}
-              tick={{ transform: 'translate(0, 6)' }}
+              tick={{ transform: 'translate(0, 6)', className: 'fill-ink-muted text-xs' }}
               tickFormatter={labelFormatter}
               fill=""
               stroke=""
-              className="fill-ink-muted text-xs"
               tickLine={false}
               axisLine={false}
               minTickGap={5}
@@ -60,10 +60,9 @@ export function BarChart({
               axisLine={false}
               tickLine={false}
               type="number"
-              tick={{ transform: 'translate(-3, 0)' }}
+              tick={{ transform: 'translate(-3, 0)', className: 'fill-ink-muted text-xs tabular-nums' }}
               fill=""
               stroke=""
-              className="fill-ink-muted text-xs tabular-nums"
               tickFormatter={axisFormatter}
             />
             <Tooltip
