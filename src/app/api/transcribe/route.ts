@@ -1,8 +1,10 @@
 import { transcribe } from '@/lib/elevenlabs'
+import { currentWorkspace } from '@/lib/workspace'
 
 export const maxDuration = 60
 
 export async function POST(req: Request) {
+  if (!(await currentWorkspace())) return Response.json({ error: 'No workspace' }, { status: 401 })
   const form = await req.formData()
   const audio = form.get('audio')
   if (!(audio instanceof Blob) || audio.size === 0) {
