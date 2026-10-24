@@ -178,7 +178,7 @@ export function InvoiceConfirm({
     <div className="card rise flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-1">
         <p className="kicker">Check your invoice</p>
-        {transcript && <p className="rounded-lg border-l-2 border-brand-500 bg-brand-50 px-3 py-2 text-sm text-ink-secondary italic dark:bg-brand-100">“{transcript}”</p>}
+        {transcript && <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-ink-secondary italic dark:bg-brand-100">“{transcript}”</p>}
       </div>
 
       <div className="flex flex-col gap-2">

@@ -327,7 +327,7 @@ function Stage({ qr, onPill }: { qr: string; onPill: (i: number) => void }) {
             <div className="card flex flex-col gap-3.5 p-[18px]">
               <div data-s className="flex flex-col gap-1.5">
                 <span className="kicker">Check your invoice</span>
-                <p className="rounded-lg border-l-2 border-brand-500 bg-brand-50 px-3 py-2 text-sm text-ink-secondary italic dark:bg-brand-100">
+                <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-ink-secondary italic dark:bg-brand-100">
                   “Invoice Acme ₹40,000 for landing page design, 18% GST, due in 7 days”
                 </p>
               </div>
